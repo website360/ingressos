@@ -47,19 +47,26 @@ services:
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
 
-      # Necessárias já no BUILD (o Next embute as NEXT_PUBLIC_* no bundle).
-      # Sem scope BUILD_TIME, a home sobe sem conseguir falar com o Supabase.
+      # Necessárias já no BUILD, e é por faltarem aqui que o primeiro deploy
+      # quebrou: o `generateStaticParams` da página de evento consulta o banco
+      # para saber quais slugs pré-renderizar, e o Next embute as NEXT_PUBLIC_*
+      # no bundle do navegador nesse mesmo passo.
+      #
+      # Os valores abaixo são públicos por definição — vão para o navegador de
+      # quem visita o site. A chave `publishable` só faz o que as políticas de
+      # RLS permitirem ao papel `anon`. O segredo de verdade é a service role,
+      # mais abaixo, que nunca sai do servidor.
       - key: NEXT_PUBLIC_SUPABASE_URL
         scope: RUN_AND_BUILD_TIME
-        value: ""
+        value: https://pclyhoyxjwlbsefqsnda.supabase.co
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         scope: RUN_AND_BUILD_TIME
-        value: ""
+        value: sb_publishable_blbV4zPQGkaF8CW6tLSGUg_9El1XrIR
       # A URL pública real do app. Se ficar em localhost, os links de ingresso
       # enviados por e-mail apontam para a máquina de quem recebeu.
       - key: NEXT_PUBLIC_APP_URL
         scope: RUN_AND_BUILD_TIME
-        value: ""
+        value: https://ingressos.agenciamay.com.br
 
       # Segredos: preencher no painel com type SECRET (ficam criptografados).
       - key: SUPABASE_SERVICE_ROLE_KEY
