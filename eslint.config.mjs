@@ -58,6 +58,12 @@ const eslintConfig = [
     rules: { "jsx-a11y/alt-text": "off" },
   },
   {
+    // O ecosystem é lido pelo PM2, que carrega o arquivo como CommonJS puro —
+    // `require` não é escolha de estilo aqui, é o único formato que funciona.
+    files: ["ecosystem.config.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     // shared/ é consumido também pelo Deno (Edge Functions): nada específico de Node/React.
     files: ["shared/**/*.ts"],
     rules: {
@@ -65,7 +71,10 @@ const eslintConfig = [
         "error",
         {
           patterns: [
-            { group: ["react", "next/*", "node:*", "fs", "path"], message: "shared/ deve ser agnóstico de runtime (ADR-010)." },
+            {
+              group: ["react", "next/*", "node:*", "fs", "path"],
+              message: "shared/ deve ser agnóstico de runtime (ADR-010).",
+            },
           ],
         },
       ],
