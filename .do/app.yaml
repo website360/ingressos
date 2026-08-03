@@ -1,0 +1,74 @@
+# =============================================================================
+# DigitalOcean App Platform — especificação do app.
+#
+# Criar pelo painel (Create → Apps → Import from App Spec) ou por CLI:
+#   doctl apps create --spec .do/app.yaml
+#
+# Este é o ensaio; o destino final é o Cloudways (docs/08-deploy.md), onde o
+# mesmo build roda sob PM2 atrás do Nginx. A aplicação é a mesma — muda quem
+# executa o processo.
+# =============================================================================
+name: ingressos
+region: nyc
+
+services:
+  - name: web
+    instance_size_slug: basic-xs
+    instance_count: 1
+    http_port: 8080
+
+    github:
+      repo: website360/ingressos
+      branch: main
+      deploy_on_push: true
+
+    build_command: npm run build
+    # `next start` e não o server.js do standalone: o App Platform gerencia o
+    # processo, então a vantagem do bundle autocontido — subir sem node_modules
+    # — não se aplica aqui. No Cloudways, sim (é PM2 no server.js).
+    run_command: npm start
+
+    # A aplicação lê o IP real de X-Forwarded-For para auditoria de check-in e
+    # rate limit. O App Platform já injeta o cabeçalho; nada a configurar.
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 20
+      period_seconds: 30
+      failure_threshold: 3
+
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+      # Necessárias já no BUILD (o Next embute as NEXT_PUBLIC_* no bundle).
+      # Sem scope BUILD_TIME, a home sobe sem conseguir falar com o Supabase.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ""
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        scope: RUN_AND_BUILD_TIME
+        value: ""
+      # A URL pública real do app. Se ficar em localhost, os links de ingresso
+      # enviados por e-mail apontam para a máquina de quem recebeu.
+      - key: NEXT_PUBLIC_APP_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ""
+
+      # Segredos: preencher no painel com type SECRET (ficam criptografados).
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: REVALIDATE_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: RESEND_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: EMAIL_FROM
+        scope: RUN_TIME
+        value: ""
