@@ -47,6 +47,9 @@ export async function middleware(request: NextRequest) {
     if (hostReal) {
       url.protocol = `${request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")}:`;
       url.host = hostReal;
+      // Atribuir `host` sem porta não apaga a que já estava: sem esta linha o
+      // redirect sai para o domínio certo na porta 3000, que o Nginx não expõe.
+      if (!hostReal.includes(":")) url.port = "";
     }
 
     url.pathname = caminho;
