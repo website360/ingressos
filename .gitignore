@@ -1,0 +1,46 @@
+# dependências
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ambiente
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# supabase
+supabase/.temp/
+supabase/.branches/
+
+# logs e processos
+logs/
+*.log
+npm-debug.log*
+.pm2/
+
+# testes
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# editores / SO
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# cache
+.eslintcache
+.turbo/

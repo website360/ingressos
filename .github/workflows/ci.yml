@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY_LOCAL || 'local-anon-key' }}
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+jobs:
+  quality:
+    name: Lint, tipos e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Formatação
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes unitários
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  database:
+    name: Migrations e RLS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # `db reset` aplica TODAS as migrations do zero + seed.
+      # Migration que não roda em base limpa não entra no projeto.
+      - name: Subir Supabase local
+        run: supabase start
+
+      - name: Aplicar migrations do zero
+        run: supabase db reset --no-seed
+
+      - name: Seed
+        run: supabase db reset
+
+      # DoD da Sprint 1: isolamento entre empresas comprovado por teste.
+      - name: Testes pgTAP (RLS e isolamento multi-tenant)
+        run: supabase test db
+
+      - name: Verificar tipos gerados em dia
+        run: |
+          supabase gen types typescript --local > /tmp/database.types.ts
+          if ! diff -q /tmp/database.types.ts src/lib/supabase/database.types.ts > /dev/null; then
+            echo "::error::database.types.ts desatualizado. Rode: npm run db:types"
+            diff /tmp/database.types.ts src/lib/supabase/database.types.ts || true
+            exit 1
+          fi
+
+      - name: Parar Supabase
+        if: always()
+        run: supabase stop
