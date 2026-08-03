@@ -37,7 +37,12 @@ services:
       failure_threshold: 3
 
     envs:
+      # RUN_TIME e não build: com NODE_ENV=production durante o build, o npm
+      # pula as devDependencies — e é lá que estão typescript, tailwind e o
+      # próprio eslint-config-next. O `next build` quebra por módulo ausente,
+      # e a mensagem aponta para o pacote, não para a causa.
       - key: NODE_ENV
+        scope: RUN_TIME
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
