@@ -54,6 +54,20 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 3000,
         HOSTNAME: "127.0.0.1",
+        /*
+          O servidor roda em UTC (docs/08). Sem esta linha, `formatDate` — que
+          usa o fuso do sistema — renderiza 12:00 no HTML e o navegador do
+          participante mostra 09:00 depois de hidratar: divergência que o React
+          acusa (#418) e, pior, horário errado no HTML que o buscador indexa e
+          que aparece antes de o JavaScript rodar.
+
+          É mitigação, não cura: acerta para quem está no Brasil, que é o
+          público, mas visitante em outro fuso continua vendo o horário
+          convertido para o dele. A correção de verdade é formatar sempre pelo
+          `timezone` do evento — a função `formatInTimezone` já existe para
+          isso e é o que docs/08 manda fazer.
+        */
+        TZ: "America/Sao_Paulo",
       },
       max_memory_restart: "512M",
       error_file: "logs/pm2-error.log",
