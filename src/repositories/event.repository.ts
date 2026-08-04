@@ -16,6 +16,9 @@ export interface EventFilters {
   q?: string;
   status?: EventStatus;
   categoryId?: string;
+  /** Recorte por data de início — usado pelo relatório. */
+  from?: string;
+  to?: string;
   limit?: number;
   offset?: number;
 }
@@ -36,6 +39,8 @@ export class EventRepository extends BaseRepository {
 
     if (filters.q) query = query.ilike("name", `%${filters.q}%`);
     if (filters.status) query = query.eq("status", filters.status);
+    if (filters.from) query = query.gte("starts_at", filters.from);
+    if (filters.to) query = query.lte("starts_at", filters.to);
 
     const { data, error, count } = await query;
     if (error) throw error;

@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BarChart3, MapPin, TrendingUp, UserCheck, UserX, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,36 +16,63 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ROUTES } from "@/constants/routes";
+import { ReportFilters } from "@/features/reports/components/report-filters";
+import { montarRelatorio } from "@/features/reports/report-data";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
 import { formatNumber, formatPercent } from "@/lib/format";
-import { getRepositories } from "@/repositories";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
-export default async function ReportsPage() {
+interface Props {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function ReportsPage({ searchParams }: Props) {
   await requirePermission(PERMISSIONS.REPORT_READ);
 
-  const { operations, events } = await getRepositories();
-  const [kpis, all] = await Promise.all([operations.dashboard(), events.list({ limit: 100 })]);
+  const params = new URLSearchParams(
+    Object.entries(await searchParams).flatMap(([chave, valor]) =>
+      typeof valor === "string" ? [[chave, valor] as [string, string]] : [],
+    ),
+  );
 
-  const absent = Math.max(kpis.registrations - kpis.checkins, 0);
+  // A mesma função que alimenta o PDF e o Excel: os três recortes saem sempre
+  // da mesma consulta, e o arquivo baixado bate com o que está na tela.
+  const dados = await montarRelatorio(params);
 
   return (
     <>
       <PageHeader
         title="Relatórios"
-        description="Números consolidados de todos os eventos. Use a lista de participantes para recortes específicos."
+        description={`Números consolidados · ${dados.periodo}. Use a lista de participantes para recortes específicos.`}
       />
 
+      {/* useSearchParams exige um boundary de Suspense no App Router. */}
+      <Suspense fallback={<Skeleton className="mb-4 h-9 w-full" />}>
+        <ReportFilters />
+      </Suspense>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Inscritos" value={kpis.registrations} icon={Users} />
-        <StatCard label="Presentes" value={kpis.checkins} icon={UserCheck} tone="success" />
-        <StatCard label="Ausentes" value={absent} icon={UserX} tone="warning" />
-        <StatCard label="Cancelados" value={kpis.cancellations} icon={UserX} tone="destructive" />
+        <StatCard label="Inscritos" value={dados.resumo.inscritos} icon={Users} />
+        <StatCard
+          label="Presentes"
+          value={dados.resumo.presentes}
+          icon={UserCheck}
+          tone="success"
+        />
+        <StatCard label="Ausentes" value={dados.resumo.ausentes} icon={UserX} tone="warning" />
+        <StatCard
+          label="Cancelados"
+          value={dados.resumo.cancelados}
+          icon={UserX}
+          tone="destructive"
+        />
         <StatCard
           label="Taxa de comparecimento"
-          value={kpis.attendance_pct != null ? formatPercent(kpis.attendance_pct) : "—"}
+          value={
+            dados.resumo.comparecimento != null ? formatPercent(dados.resumo.comparecimento) : "—"
+          }
           icon={TrendingUp}
         />
       </div>
@@ -68,37 +97,37 @@ export default async function ReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {all.items.length === 0 ? (
+                {dados.eventos.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={5}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
-                      Nenhum evento cadastrado.
+                      Nenhum evento para estes filtros.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  all.items.map((event) => (
-                    <TableRow key={event.event_id}>
+                  dados.eventos.map((evento) => (
+                    <TableRow key={evento.id}>
                       <TableCell className="max-w-56">
                         <Link
-                          href={ROUTES.admin.event(event.event_id!)}
+                          href={ROUTES.admin.event(evento.id)}
                           className="truncate text-sm font-medium hover:text-primary hover:underline"
                         >
-                          {event.name}
+                          {evento.nome}
                         </Link>
                       </TableCell>
                       <TableCell className="tabular text-right text-sm">
-                        {formatNumber(event.seats_taken ?? 0)}
+                        {formatNumber(evento.inscritos)}
                       </TableCell>
                       <TableCell className="tabular text-right text-sm">
-                        {formatNumber(event.checked_in_count ?? 0)}
+                        {formatNumber(evento.presentes)}
                       </TableCell>
                       <TableCell className="tabular text-right text-sm">
-                        {event.occupancy_pct != null ? formatPercent(event.occupancy_pct) : "—"}
+                        {evento.ocupacao != null ? formatPercent(evento.ocupacao) : "—"}
                       </TableCell>
                       <TableCell className="tabular text-right text-sm">
-                        {event.attendance_pct != null ? formatPercent(event.attendance_pct) : "—"}
+                        {evento.comparecimento != null ? formatPercent(evento.comparecimento) : "—"}
                       </TableCell>
                     </TableRow>
                   ))
@@ -113,7 +142,10 @@ export default async function ReportsPage() {
             <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="size-4" /> Participantes por estado
             </CardTitle>
-            <CardDescription>Base para decidir onde realizar o próximo evento.</CardDescription>
+            <CardDescription>
+              Base para decidir onde realizar o próximo evento. Responde apenas ao período — filtro
+              por situação ou nome não se aplica aqui.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -125,7 +157,7 @@ export default async function ReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(kpis.by_state ?? []).length === 0 ? (
+                {dados.estados.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={3}
@@ -135,14 +167,14 @@ export default async function ReportsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  kpis.by_state.map((row) => (
-                    <TableRow key={row.state}>
-                      <TableCell className="text-sm font-medium">{row.state}</TableCell>
+                  dados.estados.map((linha) => (
+                    <TableRow key={linha.estado}>
+                      <TableCell className="text-sm font-medium">{linha.estado}</TableCell>
                       <TableCell className="tabular text-right text-sm">
-                        {formatNumber(row.total)}
+                        {formatNumber(linha.participantes)}
                       </TableCell>
                       <TableCell className="tabular text-right text-sm text-muted-foreground">
-                        {formatPercent((row.total / Math.max(kpis.attendees_unique, 1)) * 100)}
+                        {formatPercent(linha.participacao)}
                       </TableCell>
                     </TableRow>
                   ))
