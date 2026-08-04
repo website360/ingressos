@@ -6,6 +6,7 @@ import { History, LocateFixed, MapPin, Navigation, Search, Ticket, X } from "luc
 
 import { EventCard } from "@/components/public/event-card";
 import { EmptyHero, FeaturedEvent } from "@/components/public/featured-event";
+import { LocationConsent } from "@/components/public/location-consent";
 import { PublicBrand } from "@/components/public/public-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,6 +168,14 @@ export function EventBrowser({ upcoming, past }: EventBrowserProps) {
 
   return (
     <>
+      {/*
+        Só na home: é a porta de entrada. Numa página de evento a pessoa já veio
+        de um link direto e sabe o que quer, e no formulário de inscrição o
+        convite competiria com o preenchimento — ali o atalho fica dentro do
+        próprio campo de cidade.
+      */}
+      <LocationConsent onPermitir={locate} />
+
       {/*
         Marca e filtros na mesma faixa fixa. Empilhar duas barras coladas no
         topo custaria 112px de tela antes do primeiro evento, e a de cima não
