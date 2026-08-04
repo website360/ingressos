@@ -94,6 +94,19 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /*
+    O navegador aplica monoespaçada por conta própria em kbd, code, pre e samp —
+    é regra da folha de estilo dele, não nossa. Com fonte única no sistema, a
+    herança precisa ser dita: remover a classe `font-mono` desses elementos não
+    resolve, porque o padrão do navegador continua valendo por baixo.
+  */
+  kbd,
+  code,
+  pre,
+  samp {
+    font-family: inherit;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings:
