@@ -50,10 +50,6 @@ export const qk = {
       [tenantId, "dashboard", "kpis", filters] as const,
   },
 
-  audit: {
-    list: (tenantId: string, filters?: unknown) => [tenantId, "audit", "list", filters] as const,
-  },
-
   notifications: {
     list: (tenantId: string) => [tenantId, "notifications"] as const,
     unreadCount: (tenantId: string) => [tenantId, "notifications", "unread"] as const,

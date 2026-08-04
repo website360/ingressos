@@ -4,8 +4,6 @@ import type {
   EmailStatus,
   EventStatus,
   RegistrationStatus,
-  SupportPriority,
-  SupportStatus,
   TicketStatus,
 } from "@/lib/supabase/database.types";
 
@@ -49,21 +47,6 @@ export const CHECKIN_RESULT: Record<CheckinResult, StatusMeta> = {
   invalido: { label: "Inválido", variant: "destructive" },
   cancelado: { label: "Cancelado", variant: "destructive" },
   fora_do_raio: { label: "Fora do raio", variant: "warning" },
-};
-
-export const SUPPORT_STATUS: Record<SupportStatus, StatusMeta> = {
-  aberto: { label: "Aberto", variant: "default" },
-  em_andamento: { label: "Em andamento", variant: "warning" },
-  aguardando: { label: "Aguardando", variant: "secondary" },
-  resolvido: { label: "Resolvido", variant: "success" },
-  fechado: { label: "Fechado", variant: "muted" },
-};
-
-export const SUPPORT_PRIORITY: Record<SupportPriority, StatusMeta> = {
-  baixa: { label: "Baixa", variant: "muted" },
-  media: { label: "Média", variant: "secondary" },
-  alta: { label: "Alta", variant: "warning" },
-  critica: { label: "Crítica", variant: "destructive" },
 };
 
 export const EMAIL_STATUS: Record<EmailStatus, StatusMeta> = {

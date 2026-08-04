@@ -2,9 +2,7 @@ import {
   BarChart3,
   Bell,
   Calendar,
-  FileSearch,
   LayoutDashboard,
-  LifeBuoy,
   Settings,
   ScanLine,
   Users,
@@ -20,7 +18,7 @@ export interface NavItem {
   icon: LucideIcon;
   /** Item aparece se o usuário tiver AO MENOS UMA destas permissões. */
   permissions: readonly Permission[];
-  badgeKey?: "notifications" | "support";
+  badgeKey?: "notifications";
 }
 
 export interface NavGroup {
@@ -93,13 +91,6 @@ export const NAVIGATION: NavGroup[] = [
     label: "Atendimento",
     items: [
       {
-        label: "Suporte",
-        href: ROUTES.admin.support,
-        icon: LifeBuoy,
-        permissions: [PERMISSIONS.SUPPORT_READ],
-        badgeKey: "support",
-      },
-      {
         label: "Notificações",
         href: ROUTES.admin.notifications,
         icon: Bell,
@@ -111,12 +102,6 @@ export const NAVIGATION: NavGroup[] = [
   {
     label: "Sistema",
     items: [
-      {
-        label: "Auditoria",
-        href: ROUTES.admin.audit,
-        icon: FileSearch,
-        permissions: [PERMISSIONS.AUDIT_READ],
-      },
       {
         label: "Configurações",
         href: ROUTES.admin.settings.root,

@@ -44,3 +44,6 @@ Thumbs.db
 # cache
 .eslintcache
 .turbo/
+
+# configuração local do agente (contém caminhos desta máquina)
+.claude/

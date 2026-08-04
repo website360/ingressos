@@ -11,7 +11,7 @@ import { TenantRepository } from "./tenant.repository";
 export type { EventStats, Event, Category } from "./event.repository";
 export type { RegistrationRow } from "./registration.repository";
 export type { CheckinAlert } from "./checkin.repository";
-export type { DashboardKpis, AuditEntry } from "./operations.repository";
+export type { DashboardKpis } from "./operations.repository";
 
 /**
  * Ponto único de acesso a dados no servidor.
