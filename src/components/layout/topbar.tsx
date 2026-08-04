@@ -60,9 +60,7 @@ export function Topbar() {
       >
         <Search className="size-4" />
         <span>Buscar...</span>
-        <kbd className="ml-auto rounded border bg-muted px-1.5 font-mono text-[0.65rem]">
-          Ctrl K
-        </kbd>
+        <kbd className="ml-auto rounded border bg-muted px-1.5 text-[0.65rem]">Ctrl K</kbd>
       </button>
 
       <div className="ml-auto flex items-center gap-1">

@@ -87,7 +87,7 @@ export default async function SettingsPage() {
               </CardHeader>
               <CardContent className="flex flex-wrap gap-1.5">
                 {Object.entries(settings).map(([key, value]) => (
-                  <Badge key={key} variant="muted" className="font-mono text-[0.7rem]">
+                  <Badge key={key} variant="muted" className="text-[0.7rem]">
                     {key}: {String(value)}
                   </Badge>
                 ))}

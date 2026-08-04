@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Nunito_Sans } from "next/font/google";
+import { Nunito_Sans } from "next/font/google";
 
 import { AppProviders } from "@/providers";
 
@@ -9,12 +9,6 @@ import "./globals.css";
 const sans = Nunito_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -42,7 +36,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={sans.variable}>
       <body className="min-h-dvh font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>

@@ -170,10 +170,16 @@
     @apply animate-shimmer;
   }
 
-  /* Números tabulares — usado em KPIs, contadores de vagas e tabelas */
+  /*
+    Números tabulares — KPIs, contadores de vagas, CPF, datas e tabelas.
+
+    Só a variante numérica, sem trocar a família: o que resolve alinhamento de
+    coluna é o dígito ter largura fixa, e isso a própria fonte do sistema faz.
+    Trocar para monoespaçada mudava também as letras, e um CPF ao lado de um
+    nome parecia texto de outro lugar.
+  */
   .tabular {
     font-variant-numeric: tabular-nums;
-    @apply font-mono;
   }
 }
 

@@ -21,8 +21,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
+        // Fonte única no sistema inteiro (Design System, seção 2).
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",

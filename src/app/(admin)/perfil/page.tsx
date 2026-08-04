@@ -78,7 +78,7 @@ export default async function ProfilePage() {
                 .slice()
                 .sort()
                 .map((permission) => (
-                  <Badge key={permission} variant="muted" className="font-mono text-[0.7rem]">
+                  <Badge key={permission} variant="muted" className="text-[0.7rem]">
                     {permission}
                   </Badge>
                 ))

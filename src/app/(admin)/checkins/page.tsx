@@ -91,7 +91,7 @@ export default async function CheckinsPage({ searchParams }: PageProps) {
         description={`${formatNumber(result.total)} registros de entrada`}
         actions={
           <Suspense fallback={null}>
-            <ExportButton href="/api/exports/checkins/excel" formato="excel" />
+            <ExportButton href="/api/exports/checkins/excel" />
           </Suspense>
         }
       />

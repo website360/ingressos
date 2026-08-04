@@ -55,7 +55,8 @@ export const ROUTES = {
   },
 
   api: {
-    exportAttendees: (search?: string) => `/api/exports/participantes${search ? `?${search}` : ""}`,
+    exportAttendees: (search?: string) =>
+      `/api/exports/participantes/excel${search ? `?${search}` : ""}`,
   },
 } as const;
 

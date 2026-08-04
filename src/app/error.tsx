@@ -34,7 +34,7 @@ export default function GlobalError({
         </CardHeader>
         <CardContent className="space-y-4">
           {error.digest && (
-            <p className="rounded-lg bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+            <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
               {error.digest}
             </p>
           )}

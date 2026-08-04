@@ -7,10 +7,10 @@ import ExcelJS from "exceljs";
 /**
  * Geração de planilha .xlsx.
  *
- * Existe para que a exportação em Excel seja de verdade — arquivo aberto pelo
- * Excel, Sheets e LibreOffice sem aviso de formato — e não um CSV renomeado.
- * O CSV continua onde faz sentido (`lib/export/csv.ts`), para quem vai
- * consumir o dado em outra ferramenta.
+ * Formato único de exportação do painel: arquivo aberto pelo Excel, Sheets e
+ * LibreOffice sem aviso de formato. O CSV que existia antes saiu — fazia a
+ * mesma coisa com menos, e manter dois caminhos para o mesmo dado dobra a
+ * chance de um sair diferente do outro sem ninguém notar.
  *
  * A regra que vale para toda coluna numérica: gravar número, nunca texto
  * formatado. Uma célula com "85,3%" é uma string e não soma, não ordena por
