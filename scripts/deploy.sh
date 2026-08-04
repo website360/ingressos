@@ -10,7 +10,13 @@ CACHE_DIR="${ISR_CACHE_DIR:-$APP_DIR/../shared/next-cache}"
 
 cd "$APP_DIR"
 
-echo "▸ Node: $(node --version)"
+# O prerender das páginas públicas acontece durante o build, e o horário do
+# evento é escrito no HTML ali. Num servidor em UTC — o padrão — as páginas
+# nascem com 12:00 onde deveria ser 09:00, e o TZ do processo em execução não
+# corrige nada, porque o HTML já está pronto e cacheado.
+export TZ="${TZ:-America/Sao_Paulo}"
+
+echo "▸ Node: $(node --version) · fuso do build: $TZ"
 
 echo "▸ Instalando dependências..."
 npm ci
