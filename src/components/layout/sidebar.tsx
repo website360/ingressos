@@ -31,13 +31,18 @@ export function Sidebar({ className }: { className?: string }) {
     });
   }
 
-  // Grupos sem nenhum item permitido simplesmente não existem para o usuário.
-  const groups = React.useMemo(
-    () =>
-      NAVIGATION.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => canAny(item.permissions)),
-      })).filter((group) => group.items.length > 0),
+  /*
+    Lista corrida, sem os títulos de seção.
+
+    Os grupos continuam existindo em `NAVIGATION` — são eles que definem a ordem
+    dos itens, e mantê-los deixa a reorganização do menu num lugar só. O que
+    saiu foi o rótulo na tela: com sete itens, cada cabeçalho separava um ou
+    dois links e o menu virava mais título do que navegação.
+
+    Item sem permissão continua não existindo para quem olha.
+  */
+  const items = React.useMemo(
+    () => NAVIGATION.flatMap((group) => group.items).filter((item) => canAny(item.permissions)),
     [canAny],
   );
 
@@ -60,48 +65,37 @@ export function Sidebar({ className }: { className?: string }) {
       </div>
 
       <ScrollArea className="flex-1 px-2 py-3">
-        <nav className="space-y-4">
-          {groups.map((group) => (
-            <div key={group.label} className="space-y-1">
-              {!collapsed && (
-                <p className="px-3 pb-1 text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </p>
-              )}
-              {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        <nav className="space-y-1">
+          {items.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-                const link = (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      "hover:bg-sidebar-accent hover:text-accent-foreground",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isActive
-                        ? "bg-sidebar-accent text-accent-foreground"
-                        : "text-muted-foreground",
-                      collapsed && "justify-center px-0",
-                    )}
-                  >
-                    <item.icon className="size-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
+            const link = (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "hover:bg-sidebar-accent hover:text-accent-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isActive ? "bg-sidebar-accent text-accent-foreground" : "text-muted-foreground",
+                  collapsed && "justify-center px-0",
+                )}
+              >
+                <item.icon className="size-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
 
-                if (!collapsed) return link;
+            if (!collapsed) return link;
 
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ))}
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
         </nav>
       </ScrollArea>
 

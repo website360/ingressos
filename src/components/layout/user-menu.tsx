@@ -53,8 +53,8 @@ export function UserMenu() {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href={ROUTES.auth.mfa}>
-            <ShieldCheck /> Segurança e MFA
+          <Link href={ROUTES.admin.security}>
+            <ShieldCheck /> Segurança
           </Link>
         </DropdownMenuItem>
 

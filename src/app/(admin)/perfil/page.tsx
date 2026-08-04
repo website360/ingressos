@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Mail, ShieldCheck, User } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, User } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ROUTES } from "@/constants/routes";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireSession } from "@/lib/auth/session";
 import { initials } from "@/lib/utils";
@@ -89,13 +92,17 @@ export default async function ProfilePage() {
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Mail className="size-4" /> Segurança
+              <ShieldCheck className="size-4" /> Segurança
             </CardTitle>
             <CardDescription>
-              Alteração de senha e MFA são feitas pelo fluxo de autenticação — em construção no
-              Módulo M0.
+              Troca de senha e situação da autenticação em dois fatores ficam em uma tela própria.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button variant="outline" asChild>
+              <Link href={ROUTES.admin.security}>Abrir segurança</Link>
+            </Button>
+          </CardContent>
         </Card>
       </div>
     </>

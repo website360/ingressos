@@ -7,7 +7,6 @@ export const ROUTES = {
     forgotPassword: "/esqueci-senha",
     resetPassword: "/redefinir-senha",
     invite: (token: string) => `/convite/${token}`,
-    mfa: "/mfa",
     callback: "/auth/callback",
     selectTenant: "/selecionar-empresa",
   },
@@ -30,6 +29,7 @@ export const ROUTES = {
       api: "/configuracoes/api",
     },
     profile: "/perfil",
+    security: "/seguranca",
   },
 
   checkin: {
@@ -70,6 +70,7 @@ export const PROTECTED_PREFIXES = [
   "/notificacoes",
   "/configuracoes",
   "/perfil",
+  "/seguranca",
   "/checkin",
   "/selecionar-empresa",
 ] as const;
