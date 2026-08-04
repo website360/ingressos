@@ -158,7 +158,13 @@ export function FeaturedEvent({ event }: { event: PublicEvent }) {
               </div>
             </div>
 
-            <Link href={ROUTES.public.event(event.slug)} className="group block">
+            {/*
+              A capa some no celular. Ali ela não fica ao lado do texto — cai
+              embaixo, empurrando o botão de inscrição para fora da tela, e
+              repete a mesma arte que já está no fundo do cartão. Some a
+              duplicata, não a informação.
+            */}
+            <Link href={ROUTES.public.event(event.slug)} className="group hidden lg:block">
               <Card className="overflow-hidden shadow-lg transition-shadow group-hover:shadow-glow">
                 {image ? (
                   /*

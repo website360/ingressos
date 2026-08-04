@@ -1,7 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { CalendarDays, Clock, ExternalLink, Mail, MapPin, Phone, User } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  Mail,
+  MapPin,
+  Phone,
+  User,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,6 +151,21 @@ export default async function EventLandingPage({ params }: PageProps) {
 
         <div className="relative mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-5">
+            {/*
+              Caminho de volta explícito, só no celular. No desktop o logo do
+              cabeçalho leva para a home e fica sempre à vista; no celular ele
+              divide a barra com pouco espaço e não se lê como botão de voltar.
+              Quem chegou por link direto — que é a maioria no celular — não
+              tem histórico para o "voltar" do navegador usar.
+            */}
+            <Link
+              href={ROUTES.home}
+              className="-mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            >
+              <ArrowLeft className="size-4" />
+              Ver todos os eventos
+            </Link>
+
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge map={EVENT_STATUS} value={event.status} />
               {event.city && (
@@ -159,20 +184,27 @@ export default async function EventLandingPage({ params }: PageProps) {
               <p className="max-w-2xl text-lg text-muted-foreground">{event.short_description}</p>
             )}
 
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {/*
+              Uma informação por linha no celular; lado a lado a partir do
+              tablet. Em fila, a quebra caía onde a largura do nome do local
+              mandasse — data emendando no horário, "Estádio" numa linha e
+              "Beira-Rio" na seguinte. Empilhado, os três ícones formam uma
+              coluna e a leitura é sempre a mesma.
+            */}
+            <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:gap-x-6">
               <span className="flex items-center gap-2">
-                <CalendarDays className="size-4 text-primary" />
+                <CalendarDays className="size-4 shrink-0 text-primary" />
                 {formatDate(event.starts_at, "EEEE, dd 'de' MMMM 'de' yyyy")}
               </span>
               <span className="flex items-center gap-2">
-                <Clock className="size-4 text-primary" />
+                <Clock className="size-4 shrink-0 text-primary" />
                 {formatInTimezone(event.starts_at, event.timezone, { timeStyle: "short" })}
                 {" às "}
                 {formatInTimezone(event.ends_at, event.timezone, { timeStyle: "short" })}
               </span>
               {event.venue_name && (
                 <span className="flex items-center gap-2">
-                  <MapPin className="size-4 text-primary" />
+                  <MapPin className="size-4 shrink-0 text-primary" />
                   {event.venue_name}
                 </span>
               )}

@@ -2,7 +2,16 @@
 
 import * as React from "react";
 
-import { History, LocateFixed, MapPin, Navigation, Search, Ticket, X } from "lucide-react";
+import {
+  History,
+  LocateFixed,
+  MapPin,
+  Navigation,
+  Search,
+  SlidersHorizontal,
+  Ticket,
+  X,
+} from "lucide-react";
 
 import { EventCard } from "@/components/public/event-card";
 import { EmptyHero, FeaturedEvent } from "@/components/public/featured-event";
@@ -22,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useDetectedPlace } from "@/hooks/use-detected-place";
 import { formatNumber } from "@/lib/format";
-import { deaccent } from "@/lib/utils";
+import { cn, deaccent } from "@/lib/utils";
 import type { PublicEvent } from "@/repositories/public.repository";
 
 const ALL = "__all__";
@@ -98,6 +107,7 @@ export function EventBrowser({ upcoming, past }: EventBrowserProps) {
   const [place, setPlace] = React.useState(ALL);
   const [period, setPeriod] = React.useState(ALL);
   const [onlyAvailable, setOnlyAvailable] = React.useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = React.useState(false);
 
   const { state: detected, request: locate } = useDetectedPlace();
 
@@ -200,62 +210,88 @@ export function EventBrowser({ upcoming, past }: EventBrowserProps) {
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-4">
           <PublicBrand />
 
-          <LocationField
-            value={place}
-            places={places}
-            onChange={choosePlace}
-            detected={detected}
-            onLocate={locate}
-            inCatalog={detectedInCatalog !== null}
-            fromGps={detectedInCatalog !== null && detectedInCatalog === place}
-          />
-
           {/*
+            No celular os quatro campos empilham e empurram o primeiro evento
+            para 250px abaixo da dobra — quem chega vê uma tela de formulário,
+            não uma agenda. Recolhidos atrás de um botão, a barra volta a uma
+            linha e o destaque aparece de cara. No desktop cabem lado a lado, e
+            esconder seria só um clique a mais para nada.
+          */}
+          <Button
+            type="button"
+            variant={filtrosAbertos || hasFilters ? "default" : "outline"}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-eventos"
+            onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+            className="ml-auto shrink-0 sm:hidden"
+          >
+            <SlidersHorizontal /> Filtros
+          </Button>
+
+          <div
+            id="filtros-eventos"
+            className={cn(
+              "w-full flex-wrap items-center gap-2 sm:flex sm:w-auto sm:flex-1",
+              filtrosAbertos ? "flex" : "hidden",
+            )}
+          >
+            <LocationField
+              value={place}
+              places={places}
+              onChange={choosePlace}
+              detected={detected}
+              onLocate={locate}
+              inCatalog={detectedInCatalog !== null}
+              fromGps={detectedInCatalog !== null && detectedInCatalog === place}
+            />
+
+            {/*
             O invólucro é que cresce: com `startIcon`, o Input embrulha o campo
             numa div, e é ela — não o <input> — que é o item do flex.
           */}
-          <div className="w-full min-w-40 sm:w-auto sm:flex-[2]">
-            <Input
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="Buscar evento ou local..."
-              startIcon={<Search />}
-              aria-label="Buscar evento"
-              className="w-full"
-            />
-          </div>
+            <div className="w-full min-w-40 sm:w-auto sm:flex-[2]">
+              <Input
+                value={term}
+                onChange={(event) => setTerm(event.target.value)}
+                placeholder="Buscar evento ou local..."
+                startIcon={<Search />}
+                aria-label="Buscar evento"
+                className="w-full"
+              />
+            </div>
 
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger
-              aria-label="Filtrar por período"
-              className="w-full sm:w-auto sm:min-w-40 sm:flex-1"
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger
+                aria-label="Filtrar por período"
+                className="w-full sm:w-auto sm:min-w-40 sm:flex-1"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIODS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="button"
+              variant={onlyAvailable ? "default" : "outline"}
+              aria-pressed={onlyAvailable}
+              onClick={() => setOnlyAvailable((value) => !value)}
+              className="shrink-0"
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PERIODS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            type="button"
-            variant={onlyAvailable ? "default" : "outline"}
-            aria-pressed={onlyAvailable}
-            onClick={() => setOnlyAvailable((value) => !value)}
-            className="shrink-0"
-          >
-            <Ticket /> Com vagas
-          </Button>
-
-          {hasFilters && (
-            <Button type="button" variant="ghost" onClick={clear} className="shrink-0">
-              <X /> Limpar
+              <Ticket /> Com vagas
             </Button>
-          )}
+
+            {hasFilters && (
+              <Button type="button" variant="ghost" onClick={clear} className="shrink-0">
+                <X /> Limpar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
