@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PERIODOS } from "@/features/reports/periods";
+import { PERIODOS } from "@/constants/periods";
 import { useDebounce } from "@/hooks/use-debounce";
 
 const TODOS = "__todos__";

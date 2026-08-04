@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PERIODOS } from "@/features/reports/periods";
+import { PERIODOS } from "@/constants/periods";
 import { getRepositories } from "@/repositories";
 
 /**

@@ -7,6 +7,11 @@ export type CheckinAlert = Views<"v_checkin_alerts">;
 export interface CheckinFilters {
   eventId?: string;
   result?: CheckinResult;
+  /** Nome do participante ou número da inscrição. */
+  q?: string;
+  /** Recorte por momento do check-in. */
+  from?: string;
+  to?: string;
   limit?: number;
   offset?: number;
 }
@@ -20,6 +25,16 @@ export class CheckinRepository extends BaseRepository {
     const limit = filters.limit ?? 100;
     const offset = filters.offset ?? 0;
 
+    /*
+      `!inner` no vínculo da inscrição só quando há busca: sem ele o filtro
+      recairia sobre o embed e devolveria a linha do check-in com a inscrição
+      vazia, em vez de descartar a linha. Fora da busca o vínculo segue externo,
+      para não sumir com check-in cuja inscrição foi apagada.
+    */
+    const vinculo = filters.q
+      ? `registration:registrations!inner(number, attendee:attendees!inner(first_name, last_name, cpf))`
+      : `registration:registrations(number, attendee:attendees(first_name, last_name, cpf))`;
+
     let query = this.client
       .from("checkins")
       .select(
@@ -27,7 +42,7 @@ export class CheckinRepository extends BaseRepository {
          device_id, source, offline_captured,
          event:events(id, name),
          operator:profiles(full_name),
-         registration:registrations(number, attendee:attendees(first_name, last_name, cpf))`,
+         ${vinculo}`,
         { count: "exact" },
       )
       .order("checked_in_at", { ascending: false })
@@ -35,6 +50,15 @@ export class CheckinRepository extends BaseRepository {
 
     if (filters.eventId) query = query.eq("event_id", filters.eventId);
     if (filters.result) query = query.eq("result", filters.result);
+    if (filters.from) query = query.gte("checked_in_at", filters.from);
+    if (filters.to) query = query.lte("checked_in_at", filters.to);
+
+    if (filters.q) {
+      const termo = filters.q.trim();
+      query = query.or([`first_name.ilike.%${termo}%`, `last_name.ilike.%${termo}%`].join(","), {
+        referencedTable: "registration.attendee",
+      });
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;

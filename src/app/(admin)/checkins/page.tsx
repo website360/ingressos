@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AlertTriangle, CheckCircle2, MapPinOff, ScanLine } from "lucide-react";
 
+import { ExportButton } from "@/components/shared/export-button";
 import { ListFilters } from "@/components/shared/list-filters";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -18,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CHECKIN_RESULT } from "@/config/status-maps";
+import { PERIODOS } from "@/constants/periods";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requireAnyPermission } from "@/lib/auth/session";
 import { formatDateTime, formatDistanceMeters, formatNumber } from "@/lib/format";
@@ -27,7 +29,19 @@ import type { CheckinResult } from "@/lib/supabase/database.types";
 export const metadata: Metadata = { title: "Check-ins" };
 
 interface PageProps {
-  searchParams: Promise<{ event?: string; result?: string }>;
+  searchParams: Promise<{
+    event?: string;
+    result?: string;
+    q?: string;
+    dias?: string;
+  }>;
+}
+
+/** Converte `?dias=7` no instante a partir do qual os check-ins entram. */
+function inicioDoPeriodo(dias?: string): string | undefined {
+  const janela = Number(dias);
+  if (!janela || Number.isNaN(janela)) return undefined;
+  return new Date(Date.now() - janela * 24 * 60 * 60 * 1000).toISOString();
 }
 
 interface CheckinRow {
@@ -58,6 +72,8 @@ export default async function CheckinsPage({ searchParams }: PageProps) {
     checkins.list({
       eventId: params.event,
       result: params.result as CheckinResult | undefined,
+      q: params.q,
+      from: inicioDoPeriodo(params.dias),
       limit: 100,
     }),
     checkins.listAlerts(50),
@@ -73,6 +89,11 @@ export default async function CheckinsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Check-ins"
         description={`${formatNumber(result.total)} registros de entrada`}
+        actions={
+          <Suspense fallback={null}>
+            <ExportButton href="/api/exports/checkins/excel" formato="excel" />
+          </Suspense>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -98,6 +119,14 @@ export default async function CheckinsPage({ searchParams }: PageProps) {
                 options: Object.entries(CHECKIN_RESULT).map(([value, meta]) => ({
                   value,
                   label: meta.label,
+                })),
+              },
+              {
+                key: "dias",
+                placeholder: "Todo o período",
+                options: PERIODOS.map((periodo) => ({
+                  value: periodo.value,
+                  label: periodo.label,
                 })),
               },
             ]}

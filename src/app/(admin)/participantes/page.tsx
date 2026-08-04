@@ -57,7 +57,12 @@ export default async function AttendeesPage({ searchParams }: PageProps) {
         actions={
           session.permissions.includes(PERMISSIONS.REGISTRATION_EXPORT) && (
             <Suspense fallback={null}>
-              <ExportButton href="/api/exports/participantes" />
+              <div className="flex gap-2">
+                {/* Os dois formatos convivem: Excel para quem vai analisar na
+                    planilha, CSV para quem vai importar em outra ferramenta. */}
+                <ExportButton href="/api/exports/participantes/excel" formato="excel" />
+                <ExportButton href="/api/exports/participantes" formato="csv" />
+              </div>
             </Suspense>
           )
         }
