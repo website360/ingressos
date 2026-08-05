@@ -56,6 +56,13 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 2. spatial_ref_sys — RISCO ACEITO E DOCUMENTADO
 --
+-- SUPERSEDIDO POR 20260801093000_postgis_schema. A análise abaixo tem dois erros
+-- de fato, ambos verificados contra o banco: (a) a tabela NÃO é somente leitura
+-- — anon tem INSERT/UPDATE/DELETE/TRUNCATE; (b) `drop extension` NÃO é barrado
+-- por posse — falha com 2BP01 (dependência), não 42501 (permissão), então
+-- recriar o PostGIS em `extensions` resolve. O texto fica como registro
+-- histórico; o conserto está na migration 093000.
+--
 -- O PostGIS cria esta tabela em `public`, e ela aparece nos avisos de segurança
 -- do Supabase como "exposta". NÃO é corrigível a partir daqui:
 --

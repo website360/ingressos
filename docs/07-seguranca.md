@@ -154,12 +154,35 @@ documentação refletem isso, e a auditoria existe para sustentar essa separaç�
 
 ## 11.1 Riscos aceitos e documentados
 
-| Item                             | Por que é aceito                                                                                                                                                                                                                                                | Reavaliar em                                                                                 |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `public.spatial_ref_sys` exposta | Catálogo EPSG do PostGIS, somente leitura, sem dado de tenant. Não é corrigível no Supabase gerenciado: a tabela pertence a `supabase_admin`, o PostGIS não é relocável e as migrations rodam como `postgres` (não superusuário). Aparece nos avisos do painel. | Sprint 6 — em base nova, `create extension postgis with schema extensions` resolve na origem |
+| Item | Por que é aceito | Reavaliar em |
+| ---- | ---------------- | ------------ |
+| _(nenhum em aberto)_ | | |
 
 Todo risco aceito vira linha nesta tabela, com motivo e data de reavaliação. Aviso de segurança
 sem dono e sem prazo vira ruído, e ruído é o que faz o alerta seguinte ser ignorado.
+
+### `public.spatial_ref_sys` exposta — reavaliado e corrigido
+
+Esta linha esteve aberta como risco aceito, com a justificativa de que a tabela era "somente
+leitura, sem dado de tenant" e de que não havia conserto no Supabase gerenciado. **As duas
+premissas estavam erradas**, e a reavaliação veio do alerta `rls_disabled_in_public` do painel:
+
+- **Não era somente leitura.** `anon` e `authenticated` tinham `DELETE, INSERT, REFERENCES,
+  SELECT, TRIGGER, TRUNCATE, UPDATE`. Um `POST /rest/v1/spatial_ref_sys` com a anon key passava
+  pela checagem de permissão e só parava na chave primária (`23505`). Não havia vazamento — o
+  conteúdo é o catálogo EPSG público —, mas havia escrita anônima sem teto: inserção ilimitada
+  de linhas (storage/custo) e `TRUNCATE` do catálogo.
+- **Havia conserto.** A suposição de que `drop extension` era impossível por falta de posse não
+  se confirmou: a tentativa falha com `2BP01` (dependência), não com `42501` (permissão) — logo
+  `postgres` passa pela checagem de posse. O que de fato não funciona é o `REVOKE`, que é aceito
+  com warning e não altera nada, por a tabela pertencer a `supabase_admin`.
+
+Corrigido em `20260801093000_postgis_schema`, que recria o PostGIS em `extensions` preservando as
+colunas `geography`. Com a extensão fora de `public`, `spatial_ref_sys` deixa de estar no schema
+exposto pelo PostgREST e o alerta some na origem.
+
+A lição que fica: risco aceito não é risco esquecido. As duas premissas que sustentavam este item
+eram verificáveis por consulta ao banco, e nenhuma tinha sido verificada.
 
 ## 12. Segredos
 
