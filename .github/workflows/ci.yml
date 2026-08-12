@@ -43,40 +43,20 @@ jobs:
       - name: Build
         run: npm run build
 
-  database:
-    name: Migrations e RLS
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      # `db reset` aplica TODAS as migrations do zero + seed.
-      # Migration que não roda em base limpa não entra no projeto.
-      - name: Subir Supabase local
-        run: supabase start
-
-      - name: Aplicar migrations do zero
-        run: supabase db reset --no-seed
-
-      - name: Seed
-        run: supabase db reset
-
-      # DoD da Sprint 1: isolamento entre empresas comprovado por teste.
-      - name: Testes pgTAP (RLS e isolamento multi-tenant)
-        run: supabase test db
-
-      - name: Verificar tipos gerados em dia
-        run: |
-          supabase gen types typescript --local > /tmp/database.types.ts
-          if ! diff -q /tmp/database.types.ts src/lib/supabase/database.types.ts > /dev/null; then
-            echo "::error::database.types.ts desatualizado. Rode: npm run db:types"
-            diff /tmp/database.types.ts src/lib/supabase/database.types.ts || true
-            exit 1
-          fi
-
-      - name: Parar Supabase
-        if: always()
-        run: supabase stop
+# O job "Migrations e RLS" foi removido aqui.
+#
+# Ele subia um Supabase local em contêiner (`supabase start`) para aplicar as
+# migrations do zero, rodar os testes pgTAP de RLS e conferir os tipos gerados.
+# Nunca funcionou: nos 14 runs que existiram, os 14 falharam no primeiro passo,
+# `supabase start`, e os testes pgTAP jamais chegaram a executar. O saldo era
+# dois minutos por push e uma CI vermelha permanente, sem nenhuma verificação
+# em troca.
+#
+# Apontá-lo para o banco real não era alternativa: o passo seguinte era
+# `supabase db reset`, que apaga e recria o banco inteiro.
+#
+# As migrations continuam sendo aplicadas sob comando, com `npm run db:push`
+# (scripts/remote.mjs) — que é como o schema em produção chegou onde está.
+#
+# Para trazer o job de volta, é preciso antes descobrir por que o
+# `supabase start` falha no runner. O histórico está no git.
