@@ -8,11 +8,11 @@ O banco é externo (Supabase) — nada de Postgres no servidor.
 
 ## Droplet
 
-| | |
-|---|---|
-| Imagem | Ubuntu 24.04 LTS |
-| Tamanho | 2 vCPU / 4 GB (o `next build` é o pico de memória) |
-| Autenticação | Chave SSH — nunca senha |
+|              |                                                    |
+| ------------ | -------------------------------------------------- |
+| Imagem       | Ubuntu 24.04 LTS                                   |
+| Tamanho      | 2 vCPU / 4 GB (o `next build` é o pico de memória) |
+| Autenticação | Chave SSH — nunca senha                            |
 
 Com 2 GB o build costuma ser morto pelo OOM killer sem mensagem clara. O
 `provision.sh` cria 2 GB de swap por causa disso, mas swap não substitui RAM:

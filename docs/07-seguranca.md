@@ -154,9 +154,9 @@ documentação refletem isso, e a auditoria existe para sustentar essa separaç�
 
 ## 11.1 Riscos aceitos e documentados
 
-| Item | Por que é aceito | Reavaliar em |
-| ---- | ---------------- | ------------ |
-| _(nenhum em aberto)_ | | |
+| Item                 | Por que é aceito | Reavaliar em |
+| -------------------- | ---------------- | ------------ |
+| _(nenhum em aberto)_ |                  |              |
 
 Todo risco aceito vira linha nesta tabela, com motivo e data de reavaliação. Aviso de segurança
 sem dono e sem prazo vira ruído, e ruído é o que faz o alerta seguinte ser ignorado.
@@ -168,7 +168,7 @@ leitura, sem dado de tenant" e de que não havia conserto no Supabase gerenciado
 premissas estavam erradas**, e a reavaliação veio do alerta `rls_disabled_in_public` do painel:
 
 - **Não era somente leitura.** `anon` e `authenticated` tinham `DELETE, INSERT, REFERENCES,
-  SELECT, TRIGGER, TRUNCATE, UPDATE`. Um `POST /rest/v1/spatial_ref_sys` com a anon key passava
+SELECT, TRIGGER, TRUNCATE, UPDATE`. Um `POST /rest/v1/spatial_ref_sys` com a anon key passava
   pela checagem de permissão e só parava na chave primária (`23505`). Não havia vazamento — o
   conteúdo é o catálogo EPSG público —, mas havia escrita anônima sem teto: inserção ilimitada
   de linhas (storage/custo) e `TRUNCATE` do catálogo.
