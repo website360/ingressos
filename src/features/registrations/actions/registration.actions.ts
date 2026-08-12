@@ -8,6 +8,7 @@ import {
   type CancelRegistrationInput,
   type RegistrationInput,
 } from "@shared/schemas/registration";
+import { splitFullName } from "@shared/validation/name";
 
 import { getRequestContext } from "@/lib/auth/request-context";
 import { AppError, fail, mapPostgrestError, ok, type Result } from "@/lib/errors";
@@ -39,14 +40,14 @@ export async function submitRegistration(
     const { data: result, error } = await client.rpc("create_registration", {
       p_event_id: eventId,
       p_attendee: {
-        first_name: data.first_name,
-        last_name: data.last_name,
+        // O banco continua com nome e sobrenome separados (busca e views de
+        // check-in dependem disso); o formulário coleta uma linha só.
+        ...splitFullName(data.full_name),
         cpf: data.cpf,
         email: data.email,
         phone: data.phone,
         city: data.city,
         state: data.state,
-        birth_date: data.birth_date,
       },
       p_consents: [
         { type: "lgpd", version: 1, accepted: data.accept_lgpd },

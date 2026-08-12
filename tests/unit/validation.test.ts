@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { formatCpf, isValidCpf, maskCpf, onlyDigits } from "@shared/validation/cpf";
 import { formatBrPhone, isValidBrPhone, isValidBrState } from "@shared/validation/phone";
+import { splitFullName } from "@shared/validation/name";
 import { cpfSchema, emailSchema, passwordSchema, slugSchema } from "@shared/schemas/common";
+import { registrationSchema } from "@shared/schemas/registration";
 
 describe("CPF", () => {
   it("aceita CPFs com dígitos verificadores corretos", () => {
@@ -51,6 +53,33 @@ describe("Telefone", () => {
   it("valida UF", () => {
     expect(isValidBrState("SP")).toBe(true);
     expect(isValidBrState("XX")).toBe(false);
+  });
+});
+
+describe("Nome completo", () => {
+  it("separa a primeira palavra do restante", () => {
+    expect(splitFullName("Ana Maria da Silva")).toEqual({
+      first_name: "Ana",
+      last_name: "Maria da Silva",
+    });
+    expect(splitFullName("  João   Souza  ")).toEqual({ first_name: "João", last_name: "Souza" });
+  });
+
+  it("exige nome e sobrenome na inscrição", () => {
+    const base = {
+      cpf: "529.982.247-25",
+      phone: "11999998888",
+      email: "ana@exemplo.com",
+      city: "São Paulo",
+      state: "SP",
+      accept_lgpd: true,
+      accept_rules: true,
+    };
+
+    expect(registrationSchema.parse({ ...base, full_name: " Ana   Silva " }).full_name).toBe(
+      "Ana Silva",
+    );
+    expect(() => registrationSchema.parse({ ...base, full_name: "Ana" })).toThrow();
   });
 });
 

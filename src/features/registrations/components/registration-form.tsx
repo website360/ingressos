@@ -51,13 +51,11 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
   const form = useForm<RegistrationInput>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      first_name: "",
-      last_name: "",
+      full_name: "",
       cpf: "",
       phone: "",
       email: "",
       city: "",
-      birth_date: "",
       accept_lgpd: false,
       accept_rules: false,
     } as never,
@@ -121,26 +119,12 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
           <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
             <FormField
               control={form.control}
-              name="first_name"
+              name="full_name"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Nome completo</FormLabel>
                   <FormControl>
-                    <Input {...field} autoComplete="given-name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="last_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sobrenome</FormLabel>
-                  <FormControl>
-                    <Input {...field} autoComplete="family-name" />
+                    <Input {...field} autoComplete="name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -170,35 +154,6 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
 
             <FormField
               control={form.control}
-              name="birth_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de nascimento</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="date" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="email" autoComplete="email" />
-                  </FormControl>
-                  <FormDescription>O ingresso será enviado para este endereço.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="phone"
               render={({ field }) => (
                 <FormItem>
@@ -211,6 +166,21 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
                       onChange={(event) => field.onChange(formatBrPhone(event.target.value))}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>E-mail</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="email" autoComplete="email" />
+                  </FormControl>
+                  <FormDescription>O ingresso será enviado para este endereço.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
