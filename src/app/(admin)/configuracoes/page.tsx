@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Building2, KeyRound, Mail, MessageCircle, ShieldCheck, Users } from "lucide-react";
+import { Building2, KeyRound, Mail, MessageCircle, Send, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EMAIL_STATUS } from "@/config/status-maps";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyForm } from "@/features/settings/components/company-form";
 import { EvolutionServerForm } from "@/features/whatsapp/components/evolution-server-form";
+import { WhatsappPacingForm } from "@/features/whatsapp/components/pacing-form";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireAnyPermission } from "@/lib/auth/session";
 import { formatDateTime, formatRelative } from "@/lib/format";
@@ -46,10 +48,9 @@ export default async function SettingsPage() {
   const session = await requireAnyPermission([PERMISSIONS.SETTINGS_READ, PERMISSIONS.USER_READ]);
 
   const { operations, tenant, whatsapp } = await getRepositories();
-  const [members, settings, emails, company, connection] = await Promise.all([
+  const [members, settings, company, connection] = await Promise.all([
     operations.listUsers().catch(() => []),
     tenant.listSettings(session.activeTenantId!).catch(() => ({})),
-    operations.listEmails(20).catch(() => []),
     tenant.findById(session.activeTenantId!).catch(() => null),
     whatsapp.find(session.activeTenantId!).catch(() => null),
   ]);
@@ -196,47 +197,20 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Mail className="size-4" /> Últimos e-mails
+                <Mail className="size-4" /> Envios
               </CardTitle>
               <CardDescription>
-                Confirmações, cancelamentos e lembretes enviados pelo sistema.
+                O histórico de e-mails passou a viver junto com o de WhatsApp, em Envios — é lá que
+                dá para filtrar, ver o que falhou e reenviar. Manter uma segunda lista aqui seria
+                duas verdades sobre a mesma coisa.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              {emails.length === 0 ? (
-                <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-                  Nenhum e-mail enviado ainda. O disparo automático entra no Módulo M2.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Destinatário</TableHead>
-                      <TableHead>Assunto</TableHead>
-                      <TableHead>Modelo</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {emails.map((email) => (
-                      <TableRow key={email.id}>
-                        <TableCell className="text-sm">{email.to_email}</TableCell>
-                        <TableCell className="max-w-56 truncate text-sm">{email.subject}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {email.template}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge map={EMAIL_STATUS} value={email.status} />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                          {formatDateTime(email.created_at)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link href={ROUTES.admin.messages}>
+                  <Send /> Abrir Envios
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -245,6 +219,14 @@ export default async function SettingsPage() {
             connection={connection}
             canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
           />
+
+          {connection && (
+            <WhatsappPacingForm
+              intervalSeconds={connection.send_interval_seconds}
+              dailyLimit={connection.daily_send_limit}
+              canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+            />
+          )}
 
           <Card>
             <CardHeader>

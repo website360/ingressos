@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 
 import { CheckinRepository } from "./checkin.repository";
 import { EventRepository } from "./event.repository";
+import { MessageRepository } from "./message.repository";
 import { OperationsRepository } from "./operations.repository";
 import { RegistrationRepository } from "./registration.repository";
 import { TenantRepository } from "./tenant.repository";
@@ -14,6 +15,7 @@ export type { RegistrationRow } from "./registration.repository";
 export type { CheckinAlert } from "./checkin.repository";
 export type { DashboardKpis } from "./operations.repository";
 export type { WhatsappConnectionView, WhatsappMessage } from "./whatsapp.repository";
+export type { MessageLogRow, MessageLogFilters } from "./message.repository";
 
 /**
  * Ponto único de acesso a dados no servidor.
@@ -31,5 +33,6 @@ export async function getRepositories() {
     operations: new OperationsRepository(client),
     tenant: new TenantRepository(client),
     whatsapp: new WhatsappRepository(client),
+    messages: new MessageRepository(client),
   };
 }

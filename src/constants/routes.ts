@@ -21,6 +21,7 @@ export const ROUTES = {
     reports: "/relatorios",
     notifications: "/notificacoes",
     whatsapp: "/whatsapp",
+    messages: "/envios",
     settings: {
       root: "/configuracoes",
       company: "/configuracoes/empresa",
@@ -71,6 +72,7 @@ export const PROTECTED_PREFIXES = [
   "/relatorios",
   "/notificacoes",
   "/whatsapp",
+  "/envios",
   "/configuracoes",
   "/perfil",
   "/seguranca",

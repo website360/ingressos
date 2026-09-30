@@ -1,172 +1,67 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { renderEmail, type EmailPayload } from "@/lib/email/templates";
-import { EvolutionClient } from "@/lib/evolution/client";
-import { ticketQrDataUrl } from "@/lib/qrcode";
+import {
+  sendEmailJob,
+  sendWhatsappJob,
+  type Admin,
+  type OutboxJob,
+  type WhatsappConnection,
+} from "@/lib/outbox/channels";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { renderWhatsapp, type WhatsappPayload } from "@/lib/whatsapp/templates";
-import { toWhatsAppNumber } from "@shared/validation/phone";
 
 /**
  * Worker da fila de efeitos colaterais (ADR-003).
  *
- * Disparado por cron (Cloudways ou pg_cron chamando esta rota). Pega um lote
- * com trava, processa e devolve o resultado — falha vira retry com backoff
- * exponencial, e depois de 5 tentativas o job para na DLQ, visível em tela.
+ * Disparado por cron a cada minuto. Pega um lote com trava, processa e devolve
+ * o resultado — falha vira retry com backoff exponencial, e depois de 5
+ * tentativas o job para na DLQ, visível em tela.
  *
- * Dois canais, dois tipos de job: `email.*` e `whatsapp.*`. São jobs separados
- * de propósito — o WhatsApp fora do ar não segura o e-mail, e cada um tem o
- * seu próprio ciclo de tentativas.
+ * Dois canais, dois tipos de job: `email.*` e `whatsapp.*`, independentes.
  *
- * Protegido por segredo compartilhado: é um endpoint que escreve no banco com
- * service role e não pode ficar aberto.
+ * ## Ritmo do WhatsApp
+ *
+ * O espaçamento entre mensagens é gravado no `run_at` de cada job, pelo
+ * alocador de slots do banco — então, em regime, poucos jobs de WhatsApp estão
+ * vencidos a cada rodada. Mas o cron acorda de minuto em minuto: com intervalo
+ * de 20s, três jobs vencem juntos, e disparar os três colados seria a rajada
+ * que o espaçamento existe para evitar.
+ *
+ * Por isso a rodada também espera entre um envio e o próximo, dentro de um
+ * orçamento de tempo que termina antes do tick seguinte. O que não couber volta
+ * para a fila sem gastar tentativa.
+ *
+ * Protegido por segredo compartilhado: escreve no banco com service role.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BATCH_SIZE = 20;
 
-type Admin = ReturnType<typeof createAdminClient>;
-
-interface OutboxJob {
-  id: string;
-  type: string;
-  payload: EmailPayload & WhatsappPayload;
-  tenant_id: string | null;
-}
-
-async function sendWithResend(
-  to: string,
-  subject: string,
-  html: string,
-  text: string,
-): Promise<{ id?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-
-  if (!apiKey || !from) {
-    throw new Error("RESEND_API_KEY ou EMAIL_FROM não configurados.");
-  }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to, subject, html, text }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Resend respondeu ${response.status}: ${await response.text()}`);
-  }
-
-  return response.json();
-}
-
 /**
- * Conexão do WhatsApp da empresa, uma leitura por lote.
- *
- * Vinte jobs da mesma empresa não precisam de vinte consultas — e o cache
- * dura só o tempo da rodada, então uma queda de conexão é notada na próxima.
+ * Teto de tempo da rodada. O cron roda a cada 60s; parar aos 45 deixa margem
+ * para o último envio terminar sem duas rodadas se atropelarem.
  */
+const RUN_BUDGET_MS = 45_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Conexão de WhatsApp da empresa, uma leitura por rodada. */
 function connectionLoader(admin: Admin) {
-  const cache = new Map<string, Awaited<ReturnType<typeof read>>>();
+  const cache = new Map<string, WhatsappConnection | null>();
 
-  async function read(tenantId: string) {
-    const { data } = await admin
-      .from("whatsapp_connections")
-      .select("base_url, api_key, instance_name, instance_token, state")
-      .eq("tenant_id", tenantId)
-      .maybeSingle();
-    return data;
-  }
-
-  return async (tenantId: string) => {
-    if (!cache.has(tenantId)) cache.set(tenantId, await read(tenantId));
+  return async (tenantId: string): Promise<WhatsappConnection | null> => {
+    if (!cache.has(tenantId)) {
+      const { data } = await admin
+        .from("whatsapp_connections")
+        .select(
+          "base_url, api_key, instance_name, instance_token, state, send_interval_seconds, daily_send_limit",
+        )
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      cache.set(tenantId, data);
+    }
     return cache.get(tenantId)!;
   };
-}
-
-async function sendWhatsapp(
-  admin: Admin,
-  job: OutboxJob,
-  appUrl: string,
-  loadConnection: (tenantId: string) => Promise<{
-    base_url: string;
-    api_key: string;
-    instance_name: string | null;
-    instance_token: string | null;
-    state: string;
-  } | null>,
-): Promise<void> {
-  if (!job.tenant_id) throw new Error("Job de WhatsApp sem empresa.");
-
-  const connection = await loadConnection(job.tenant_id);
-  if (!connection || !connection.instance_name) {
-    throw new Error("WhatsApp não configurado para esta empresa.");
-  }
-
-  // Número caído é falha temporária de verdade: o retry com backoff dá tempo
-  // de alguém reparear antes de o job cair na DLQ.
-  if (connection.state !== "conectado") {
-    throw new Error(`Número do WhatsApp está ${connection.state}.`);
-  }
-
-  const number = toWhatsAppNumber(job.payload.phone ?? "");
-  if (!number) {
-    throw new Error(`Telefone inválido para WhatsApp: ${job.payload.phone ?? "(vazio)"}`);
-  }
-
-  const content = renderWhatsapp(job.type, job.payload, appUrl);
-  const client = new EvolutionClient({
-    baseUrl: connection.base_url,
-    apiKey: connection.api_key,
-  });
-
-  // Falhar alto em vez de degradar em silêncio. Sem esta checagem, um payload
-  // sem token cai no envio de texto puro e a pessoa recebe a confirmação sem o
-  // ingresso — que foi exatamente o defeito que o gatilho de mensagens tinha
-  // (ver a migration 20260801093300). Job que falha aparece; mensagem torta,
-  // não.
-  if (content.attachTicketQr && !job.payload.token) {
-    throw new Error("Job de confirmação sem token do ingresso — nada a anexar.");
-  }
-
-  let providerId: string | null;
-
-  if (content.attachTicketQr && job.payload.token) {
-    // O mesmo QR do ingresso e do PDF — o conteúdo é o token assinado, e
-    // nenhum dado pessoal viaja na imagem.
-    const dataUrl = await ticketQrDataUrl(job.payload.token);
-    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-
-    providerId = await client.sendMedia(
-      connection.instance_name,
-      number,
-      base64,
-      content.body,
-      `ingresso-${job.payload.ticket_code ?? "qrcode"}.png`,
-      connection.instance_token,
-    );
-  } else {
-    providerId = await client.sendText(
-      connection.instance_name,
-      number,
-      content.body,
-      connection.instance_token,
-    );
-  }
-
-  await admin.from("whatsapp_messages").insert({
-    tenant_id: job.tenant_id,
-    template: job.type,
-    to_phone: number,
-    body: content.body,
-    payload: job.payload as never,
-    status: "enviado",
-    provider_message_id: providerId,
-    sent_at: new Date().toISOString(),
-    entity_type: "registration",
-    entity_id: (job.payload as { registration_id?: string }).registration_id ?? null,
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -178,6 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  const startedAt = Date.now();
   const admin = createAdminClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const loadConnection = connectionLoader(admin);
@@ -192,53 +88,71 @@ export async function POST(request: NextRequest) {
   }
 
   const claimed = (jobs ?? []) as unknown as OutboxJob[];
-  const outcome = { processed: 0, sent: 0, whatsapp: 0, failed: 0 };
+  const outcome = { processed: 0, email: 0, whatsapp: 0, failed: 0, adiados: 0 };
 
-  for (const job of claimed) {
+  const finish = async (job: OutboxJob, ok: boolean, message?: string) => {
+    await admin.rpc("complete_outbox_job", {
+      p_id: job.id,
+      p_success: ok,
+      ...(ok ? {} : { p_error: (message ?? "").slice(0, 500) }),
+    });
+  };
+
+  // E-mail primeiro: é rápido, não tem ritmo a respeitar, e assim o orçamento
+  // de tempo da rodada fica inteiro para o WhatsApp.
+  const emailJobs = claimed.filter((j) => j.type.startsWith("email."));
+  const whatsappJobs = claimed.filter((j) => j.type.startsWith("whatsapp."));
+  const unknownJobs = claimed.filter(
+    (j) => !j.type.startsWith("email.") && !j.type.startsWith("whatsapp."),
+  );
+
+  for (const job of emailJobs) {
     outcome.processed++;
-
     try {
-      if (job.type.startsWith("email.")) {
-        const content = renderEmail(job.type, job.payload, appUrl);
-        const result = await sendWithResend(
-          job.payload.to,
-          content.subject,
-          content.html,
-          content.text,
-        );
-
-        await admin.from("email_messages").insert({
-          tenant_id: job.tenant_id!,
-          template: job.type,
-          to_email: job.payload.to,
-          subject: content.subject,
-          payload: job.payload as never,
-          status: "enviado",
-          provider_message_id: result.id ?? null,
-          sent_at: new Date().toISOString(),
-        });
-
-        outcome.sent++;
-      } else if (job.type.startsWith("whatsapp.")) {
-        await sendWhatsapp(admin, job, appUrl, loadConnection);
-        outcome.whatsapp++;
-      } else {
-        // Tipos futuros (webhook, PDF) entram aqui. Ignorar em silêncio
-        // deixaria o job preso em 'processando' para sempre.
-        throw new Error(`Tipo de job não suportado: ${job.type}`);
-      }
-
-      await admin.rpc("complete_outbox_job", { p_id: job.id, p_success: true });
+      await sendEmailJob(admin, job, appUrl);
+      await finish(job, true);
+      outcome.email++;
     } catch (jobError) {
-      const message = jobError instanceof Error ? jobError.message : String(jobError);
-
-      await admin.rpc("complete_outbox_job", {
-        p_id: job.id,
-        p_success: false,
-        p_error: message.slice(0, 500),
-      });
+      await finish(job, false, jobError instanceof Error ? jobError.message : String(jobError));
       outcome.failed++;
     }
+  }
+
+  let lastSentAt = 0;
+
+  for (const job of whatsappJobs) {
+    const connection = job.tenant_id ? await loadConnection(job.tenant_id) : null;
+    const intervalMs = (connection?.send_interval_seconds ?? 20) * 1000;
+    const waitMs = lastSentAt === 0 ? 0 : Math.max(0, intervalMs - (Date.now() - lastSentAt));
+
+    // Não cabe mais nesta rodada: devolve sem gastar tentativa. O `run_at` do
+    // job já garante a vez dele; a próxima rodada o encontra.
+    if (Date.now() - startedAt + waitMs > RUN_BUDGET_MS) {
+      await admin.rpc("release_outbox_job", { p_id: job.id });
+      outcome.adiados++;
+      continue;
+    }
+
+    if (waitMs > 0) await sleep(waitMs);
+
+    outcome.processed++;
+    lastSentAt = Date.now();
+
+    try {
+      await sendWhatsappJob(admin, job, appUrl, connection);
+      await finish(job, true);
+      outcome.whatsapp++;
+    } catch (jobError) {
+      await finish(job, false, jobError instanceof Error ? jobError.message : String(jobError));
+      outcome.failed++;
+    }
+  }
+
+  for (const job of unknownJobs) {
+    // Ignorar em silêncio deixaria o job preso em 'processando' para sempre.
+    outcome.processed++;
+    await finish(job, false, `Tipo de job não suportado: ${job.type}`);
+    outcome.failed++;
   }
 
   return NextResponse.json(outcome, { headers: { "Cache-Control": "no-store" } });

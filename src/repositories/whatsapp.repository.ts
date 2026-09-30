@@ -18,6 +18,8 @@ const VISIBLE = [
   "api_key_hint",
   "server_version",
   "webhook_dialect",
+  "send_interval_seconds",
+  "daily_send_limit",
   "instance_name",
   "state",
   "phone_number",

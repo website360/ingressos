@@ -29,3 +29,25 @@ export const whatsappServerSchema = z.object({
 });
 
 export type WhatsappServerInput = z.infer<typeof whatsappServerSchema>;
+
+/**
+ * Ritmo de envio.
+ *
+ * Os limites do schema espelham os CHECK do banco — validar aqui dá mensagem
+ * em português no campo; quem impede de verdade é a constraint.
+ */
+export const whatsappPacingSchema = z.object({
+  send_interval_seconds: z.coerce
+    .number()
+    .int("Use um número inteiro de segundos.")
+    .min(5, "Menos de 5 segundos entre mensagens é pedir para ser banido.")
+    .max(3600, "O intervalo máximo é 3600 segundos (1 hora)."),
+
+  daily_send_limit: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "O teto diário precisa ser ao menos 1.")
+    .max(100000, "Teto diário alto demais."),
+});
+
+export type WhatsappPacingInput = z.infer<typeof whatsappPacingSchema>;

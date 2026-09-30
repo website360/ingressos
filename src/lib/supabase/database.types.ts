@@ -142,6 +142,7 @@ type EmailMessagesRow = {
   entity_type: string | null;
   entity_id: string | null;
   created_at: string;
+  job_id: string | null;
 };
 
 type EventDocumentsRow = {
@@ -525,6 +526,24 @@ type VEventStatsRow = {
   attendance_pct: number | null;
 };
 
+type VMessageLogRow = {
+  id: string | null;
+  job_id: string | null;
+  tenant_id: string | null;
+  channel: string | null;
+  recipient: string | null;
+  template: string | null;
+  status: EmailStatus | null;
+  attempts: number | null;
+  last_error: string | null;
+  sent_at: string | null;
+  created_at: string | null;
+  scheduled_at: string | null;
+  job_status: string | null;
+  event_id: string | null;
+  event_name: string | null;
+};
+
 type VRegistrationFullRow = {
   registration_id: string | null;
   tenant_id: string | null;
@@ -586,6 +605,8 @@ type WhatsappConnectionsRow = {
   updated_at: string;
   updated_by: string | null;
   webhook_secret: string | null;
+  send_interval_seconds: number;
+  daily_send_limit: number;
 };
 
 type WhatsappMessagesRow = {
@@ -603,6 +624,7 @@ type WhatsappMessagesRow = {
   entity_type: string | null;
   entity_id: string | null;
   created_at: string;
+  job_id: string | null;
 };
 
 type Insertable<T, Optional extends keyof T> = Omit<T, Optional> & Partial<Pick<T, Optional>>;
@@ -715,6 +737,7 @@ export type Database = {
           | "entity_type"
           | "entity_id"
           | "created_at"
+          | "job_id"
         >;
         Update: Partial<EmailMessagesRow>;
         Relationships: [];
@@ -1043,6 +1066,8 @@ export type Database = {
           | "updated_at"
           | "updated_by"
           | "webhook_secret"
+          | "send_interval_seconds"
+          | "daily_send_limit"
         >;
         Update: Partial<WhatsappConnectionsRow>;
         Relationships: [];
@@ -1061,6 +1086,7 @@ export type Database = {
           | "entity_type"
           | "entity_id"
           | "created_at"
+          | "job_id"
         >;
         Update: Partial<WhatsappMessagesRow>;
         Relationships: [];
@@ -1070,6 +1096,7 @@ export type Database = {
       v_audit_logs: { Row: VAuditLogsRow; Relationships: [] };
       v_checkin_alerts: { Row: VCheckinAlertsRow; Relationships: [] };
       v_event_stats: { Row: VEventStatsRow; Relationships: [] };
+      v_message_log: { Row: VMessageLogRow; Relationships: [] };
       v_registration_full: { Row: VRegistrationFullRow; Relationships: [] };
     };
     Functions: {
@@ -1110,6 +1137,8 @@ export type Database = {
         Returns: undefined;
       };
       requeue_stale_outbox_jobs: { Args: { p_older_than?: string }; Returns: number };
+      release_outbox_job: { Args: { p_id: string }; Returns: undefined };
+      retry_messages: { Args: { p_job_ids: string[] }; Returns: Json };
     };
     Enums: {
       audit_action: AuditAction;

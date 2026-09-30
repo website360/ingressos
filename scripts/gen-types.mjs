@@ -56,6 +56,10 @@ const FUNCTIONS = {
     returns: "undefined",
   },
   requeue_stale_outbox_jobs: { args: "{ p_older_than?: string }", returns: "number" },
+  release_outbox_job: { args: "{ p_id: string }", returns: "undefined" },
+  // Reenvio em massa — EXECUTE para authenticated, com a permissão
+  // checada dentro da função (ver 20260801093400).
+  retry_messages: { args: "{ p_job_ids: string[] }", returns: "Json" },
 };
 
 function loadDatabaseUrl() {
