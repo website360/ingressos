@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Building2, KeyRound, Mail, ShieldCheck, Users } from "lucide-react";
+import { Building2, KeyRound, Mail, MessageCircle, ShieldCheck, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import {
 import { EMAIL_STATUS } from "@/config/status-maps";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyForm } from "@/features/settings/components/company-form";
+import { EvolutionServerForm } from "@/features/whatsapp/components/evolution-server-form";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireAnyPermission } from "@/lib/auth/session";
 import { formatDateTime, formatRelative } from "@/lib/format";
@@ -44,12 +45,13 @@ interface MemberRow {
 export default async function SettingsPage() {
   const session = await requireAnyPermission([PERMISSIONS.SETTINGS_READ, PERMISSIONS.USER_READ]);
 
-  const { operations, tenant } = await getRepositories();
-  const [members, settings, emails, company] = await Promise.all([
+  const { operations, tenant, whatsapp } = await getRepositories();
+  const [members, settings, emails, company, connection] = await Promise.all([
     operations.listUsers().catch(() => []),
     tenant.listSettings(session.activeTenantId!).catch(() => ({})),
     operations.listEmails(20).catch(() => []),
     tenant.findById(session.activeTenantId!).catch(() => null),
+    whatsapp.find(session.activeTenantId!).catch(() => null),
   ]);
 
   const rows = members as unknown as MemberRow[];
@@ -67,6 +69,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="permissoes">Perfis</TabsTrigger>
           <TabsTrigger value="emails">E-mails</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa" className="space-y-4">
@@ -235,6 +238,25 @@ export default async function SettingsPage() {
                 </Table>
               )}
             </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="whatsapp" className="space-y-4">
+          <EvolutionServerForm
+            connection={connection}
+            canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MessageCircle className="size-4" /> Como funciona
+              </CardTitle>
+              <CardDescription>
+                Aqui ficam os dados do servidor. O celular é pareado em Conexão do WhatsApp, no menu
+                lateral — com o número conectado, cada inscrição confirmada dispara dois envios
+                independentes: o e-mail de sempre e o ingresso pelo WhatsApp.
+              </CardDescription>
+            </CardHeader>
           </Card>
         </TabsContent>
       </Tabs>

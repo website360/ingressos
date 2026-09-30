@@ -10,6 +10,19 @@
 import pg from "pg";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+/** Formata o arquivo gerado. Falha aqui não invalida a geração — só avisa. */
+async function format(file) {
+  try {
+    await execFileAsync("npx", ["prettier", "--write", file], { shell: true });
+  } catch (error) {
+    console.warn(`  ! Prettier não rodou no arquivo gerado: ${error.message}`);
+  }
+}
 
 const OUT = resolve(process.cwd(), "src/lib/supabase/database.types.ts");
 
@@ -90,7 +103,10 @@ function pascal(name) {
   return name.replace(/(^|_)([a-z])/g, (_, __, c) => c.toUpperCase());
 }
 
-const client = new pg.Client({ connectionString: loadDatabaseUrl(), ssl: { rejectUnauthorized: false } });
+const client = new pg.Client({
+  connectionString: loadDatabaseUrl(),
+  ssl: { rejectUnauthorized: false },
+});
 await client.connect();
 
 // Enums -----------------------------------------------------------------------
@@ -164,7 +180,9 @@ for (const [table, { columns }] of tables) {
   lines.push("");
 }
 
-lines.push("type Insertable<T, Optional extends keyof T> = Omit<T, Optional> & Partial<Pick<T, Optional>>;");
+lines.push(
+  "type Insertable<T, Optional extends keyof T> = Omit<T, Optional> & Partial<Pick<T, Optional>>;",
+);
 lines.push("");
 lines.push("export type Database = {");
 lines.push("  public: {");
@@ -221,6 +239,11 @@ lines.push("");
 
 writeFileSync(OUT, lines.join("\n"), "utf8");
 await client.end();
+
+// Prettier na saída: sem isto o arquivo gerado reprova no `npm run format:check`
+// e derruba a CI a cada regeneração — uma falha que não diz nada sobre o código
+// escrito à mão e que ninguém consegue corrigir sem reger o arquivo.
+await format(OUT);
 
 const tableCount = [...tables.values()].filter((t) => t.kind === "r").length;
 const viewCount = [...tables.values()].filter((t) => t.kind === "v").length;
