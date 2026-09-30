@@ -121,6 +121,15 @@ async function sendWhatsapp(
     apiKey: connection.api_key,
   });
 
+  // Falhar alto em vez de degradar em silêncio. Sem esta checagem, um payload
+  // sem token cai no envio de texto puro e a pessoa recebe a confirmação sem o
+  // ingresso — que foi exatamente o defeito que o gatilho de mensagens tinha
+  // (ver a migration 20260801093300). Job que falha aparece; mensagem torta,
+  // não.
+  if (content.attachTicketQr && !job.payload.token) {
+    throw new Error("Job de confirmação sem token do ingresso — nada a anexar.");
+  }
+
   let providerId: string | null;
 
   if (content.attachTicketQr && job.payload.token) {
