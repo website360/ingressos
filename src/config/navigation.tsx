@@ -3,6 +3,7 @@ import {
   Bell,
   Calendar,
   LayoutDashboard,
+  MessageCircle,
   Settings,
   ScanLine,
   Users,
@@ -102,6 +103,12 @@ export const NAVIGATION: NavGroup[] = [
   {
     label: "Sistema",
     items: [
+      {
+        label: "Conexão do WhatsApp",
+        href: ROUTES.admin.whatsapp,
+        icon: MessageCircle,
+        permissions: [PERMISSIONS.SETTINGS_READ],
+      },
       {
         label: "Configurações",
         href: ROUTES.admin.settings.root,

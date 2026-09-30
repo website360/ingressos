@@ -245,3 +245,58 @@ user agent, dispositivo e coordenadas.
 
 **Consequências.** Toda chamada de escrita precisa propagar o contexto — encapsulado num único
 helper (`withRequestContext`), o que torna o esquecimento improvável.
+
+---
+
+## ADR-015 — Credencial da Evolution no banco, gravável e não legível
+
+**Contexto.** A integração com o WhatsApp (Evolution API) precisa de URL e chave de API do
+servidor. Trocar de servidor tem que ser um formulário no painel, não um redeploy — então a
+credencial é dado, não variável de ambiente. Só que dado no banco é dado que alguém lê.
+
+**Decisão.** `whatsapp_connections` guarda a credencial, com privilégio **por coluna**: `api_key`,
+`instance_token` e `webhook_secret` têm `GRANT INSERT/UPDATE` para `authenticated`, mas **não
+`SELECT`**. O painel grava e nunca lê de volta; para exibir, existe `api_key_hint` com os quatro
+últimos dígitos. Quem lê o segredo é o `service_role`, dentro do servidor Next.js.
+
+A RLS continua decidindo **quais linhas**; o `GRANT` por coluna decide **quais colunas**. São
+mecanismos diferentes e é preciso os dois: só a RLS, quem tem `settings.read` faria
+`select api_key` e levaria a chave para o navegador.
+
+**Descartado.** (a) Variável de ambiente — contraria o requisito e transforma troca de servidor em
+deploy. (b) Cifrar com `pgcrypto` na aplicação — empurra o problema para onde guardar a chave de
+cifragem, e um dump do banco continua contendo o material cifrado junto com tudo mais. (c) Gateway
+em Edge Function com o segredo no Vault — isolamento melhor, mas cria uma segunda superfície de
+deploy e contraria o ADR-008; num sistema de empresa única, cujo servidor Next já guarda a service
+role key, o ganho não paga.
+
+**Consequências.** Repositório e telas precisam pedir colunas explícitas: `select('*')` como
+`authenticated` falha com `permission denied`. É um atrito deliberado — a falha é barulhenta e
+aparece no primeiro teste, em vez de a chave vazar em silêncio. O `WhatsappRepository` expõe
+`find` (sem segredo) e `findWithSecret` (só funciona com service role), e o tipo
+`WhatsappConnectionView` torna a distinção visível no editor.
+
+**Princípio geral que fica:** segredo que a aplicação só precisa escrever não deve ser legível por
+quem escreve.
+
+---
+
+## ADR-016 — WhatsApp como segundo job da fila, não como alternativa ao e-mail
+
+**Contexto.** Com o número conectado, a inscrição confirmada deve chegar por WhatsApp. O e-mail já
+existe e sai pela fila de outbox (ADR-003).
+
+**Decisão.** Cada inscrição confirmada enfileira **dois jobs independentes**: `email.*` e
+`whatsapp.*`. O gatilho só cria o job de WhatsApp se houver linha em `whatsapp_connections` — sem
+integração configurada, não nasce job condenado a estourar as tentativas e cair na DLQ.
+
+**Descartado.** (a) WhatsApp com e-mail como fallback — acopla os dois jobs e atrasa a entrega
+justamente no caminho de falha. (b) WhatsApp substituindo o e-mail — o número da empresa cai
+sozinho (bateria, sessão derrubada, aparelho trocado), e aí o inscrito ficaria sem ingresso
+nenhum. (c) Deixar o inscrito escolher no formulário — mais um campo num formulário que foi
+enxugado de propósito.
+
+**Consequências.** Dobra o volume da fila nas empresas com WhatsApp ligado, e cada canal tem o seu
+próprio ciclo de retry — que é exatamente o ponto: o WhatsApp fora do ar não segura o e-mail.
+Número desconectado é tratado como falha temporária, para o backoff dar tempo de alguém reparear
+antes da DLQ.

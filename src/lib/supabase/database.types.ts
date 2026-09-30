@@ -33,6 +33,7 @@ export type SupportStatus = "aberto" | "em_andamento" | "aguardando" | "resolvid
 export type TenantStatus = "trial" | "ativo" | "suspenso" | "cancelado";
 export type TicketStatus = "valido" | "utilizado" | "cancelado" | "expirado" | "reemitido";
 export type UserRole = "admin" | "organizador" | "recepcao" | "suporte";
+export type WhatsappState = "nunca_conectado" | "conectando" | "conectado" | "desconectado";
 
 type AttendeesRow = {
   id: string;
@@ -98,7 +99,6 @@ type CheckinsRow = {
   device_info: string | null;
   user_agent: string | null;
   ip: string | null;
-  location: unknown | null;
   accuracy_m: number | null;
   city: string | null;
   state: string | null;
@@ -111,6 +111,7 @@ type CheckinsRow = {
   idempotency_key: string | null;
   source: string;
   created_at: string;
+  location: unknown | null;
 };
 
 type ConsentsRow = {
@@ -239,7 +240,6 @@ type EventsRow = {
   state: string | null;
   zip_code: string | null;
   country: string;
-  location: unknown | null;
   allowed_radius_m: number;
   google_maps_url: string | null;
   capacity: number;
@@ -261,6 +261,7 @@ type EventsRow = {
   updated_at: string;
   created_by: string | null;
   updated_by: string | null;
+  location: unknown | null;
 };
 
 type MembershipsRow = {
@@ -566,6 +567,44 @@ type VRegistrationFullRow = {
   cancel_by_name: string | null;
 };
 
+type WhatsappConnectionsRow = {
+  tenant_id: string;
+  base_url: string;
+  api_key: string;
+  api_key_hint: string;
+  server_version: string | null;
+  webhook_dialect: string | null;
+  instance_name: string | null;
+  instance_token: string | null;
+  state: WhatsappState;
+  phone_number: string | null;
+  qr_code: string | null;
+  qr_expires_at: string | null;
+  last_connected_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  webhook_secret: string | null;
+};
+
+type WhatsappMessagesRow = {
+  id: string;
+  tenant_id: string;
+  template: string;
+  to_phone: string;
+  body: string;
+  payload: Json;
+  status: EmailStatus;
+  provider_message_id: string | null;
+  attempts: number;
+  last_error: string | null;
+  sent_at: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  created_at: string;
+};
+
 type Insertable<T, Optional extends keyof T> = Omit<T, Optional> & Partial<Pick<T, Optional>>;
 
 export type Database = {
@@ -635,7 +674,6 @@ export type Database = {
           | "device_info"
           | "user_agent"
           | "ip"
-          | "location"
           | "accuracy_m"
           | "city"
           | "state"
@@ -648,6 +686,7 @@ export type Database = {
           | "idempotency_key"
           | "source"
           | "created_at"
+          | "location"
         >;
         Update: Partial<CheckinsRow>;
         Relationships: [];
@@ -756,7 +795,6 @@ export type Database = {
           | "state"
           | "zip_code"
           | "country"
-          | "location"
           | "allowed_radius_m"
           | "google_maps_url"
           | "overbooking_pct"
@@ -777,6 +815,7 @@ export type Database = {
           | "updated_at"
           | "created_by"
           | "updated_by"
+          | "location"
         >;
         Update: Partial<EventsRow>;
         Relationships: [];
@@ -986,6 +1025,46 @@ export type Database = {
         Update: Partial<UserPermissionOverridesRow>;
         Relationships: [];
       };
+      whatsapp_connections: {
+        Row: WhatsappConnectionsRow;
+        Insert: Insertable<
+          WhatsappConnectionsRow,
+          | "server_version"
+          | "webhook_dialect"
+          | "instance_name"
+          | "instance_token"
+          | "state"
+          | "phone_number"
+          | "qr_code"
+          | "qr_expires_at"
+          | "last_connected_at"
+          | "last_error"
+          | "created_at"
+          | "updated_at"
+          | "updated_by"
+          | "webhook_secret"
+        >;
+        Update: Partial<WhatsappConnectionsRow>;
+        Relationships: [];
+      };
+      whatsapp_messages: {
+        Row: WhatsappMessagesRow;
+        Insert: Insertable<
+          WhatsappMessagesRow,
+          | "id"
+          | "payload"
+          | "status"
+          | "provider_message_id"
+          | "attempts"
+          | "last_error"
+          | "sent_at"
+          | "entity_type"
+          | "entity_id"
+          | "created_at"
+        >;
+        Update: Partial<WhatsappMessagesRow>;
+        Relationships: [];
+      };
     };
     Views: {
       v_audit_logs: { Row: VAuditLogsRow; Relationships: [] };
@@ -1045,6 +1124,7 @@ export type Database = {
       tenant_status: TenantStatus;
       ticket_status: TicketStatus;
       user_role: UserRole;
+      whatsapp_state: WhatsappState;
     };
     CompositeTypes: Record<string, never>;
   };

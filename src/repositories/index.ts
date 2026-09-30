@@ -7,11 +7,13 @@ import { EventRepository } from "./event.repository";
 import { OperationsRepository } from "./operations.repository";
 import { RegistrationRepository } from "./registration.repository";
 import { TenantRepository } from "./tenant.repository";
+import { WhatsappRepository } from "./whatsapp.repository";
 
 export type { EventStats, Event, Category } from "./event.repository";
 export type { RegistrationRow } from "./registration.repository";
 export type { CheckinAlert } from "./checkin.repository";
 export type { DashboardKpis } from "./operations.repository";
+export type { WhatsappConnectionView, WhatsappMessage } from "./whatsapp.repository";
 
 /**
  * Ponto único de acesso a dados no servidor.
@@ -28,5 +30,6 @@ export async function getRepositories() {
     checkins: new CheckinRepository(client),
     operations: new OperationsRepository(client),
     tenant: new TenantRepository(client),
+    whatsapp: new WhatsappRepository(client),
   };
 }

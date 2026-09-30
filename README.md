@@ -18,6 +18,7 @@ analítico.
 > | M4 — Gestão (participantes, check-ins, exportação CSV)                                                  | ✅       |
 > | M5 — Analytics (dashboard com gráficos, relatórios)                                                     | ✅       |
 > | M6 — Operação (notificações, suporte, auditoria, e-mails transacionais)                                 | ✅       |
+> | M6.1 — WhatsApp (Evolution API): conexão por QR e ingresso junto com o e-mail                           | ✅       |
 > | M7 — API pública v1, webhooks, OpenAPI                                                                  | pendente |
 >
 > Instalação e execução: [docs/10-instalacao.md](docs/10-instalacao.md).
