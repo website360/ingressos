@@ -16,7 +16,7 @@ import {
 import { EventCard } from "@/components/public/event-card";
 import { EmptyHero, FeaturedEvent } from "@/components/public/featured-event";
 import { LocationConsent } from "@/components/public/location-consent";
-import { PublicBrand } from "@/components/public/public-header";
+import { PublicBrand, SecondCopyLink } from "@/components/public/public-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -209,6 +209,14 @@ export function EventBrowser({ upcoming, past }: EventBrowserProps) {
         */}
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-4">
           <PublicBrand />
+
+          {/*
+            `sm:order-last` tira o atalho do meio da barra no desktop, onde os
+            campos de filtro ocupam o centro: ele vai para a ponta direita, do
+            outro lado da busca. No celular fica logo após a marca, antes do
+            botão de filtros, reduzido ao ícone.
+          */}
+          <SecondCopyLink className="sm:order-last" />
 
           {/*
             No celular os quatro campos empilham e empurram o primeiro evento

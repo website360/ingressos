@@ -438,6 +438,19 @@ type TenantsRow = {
   zip_code: string | null;
 };
 
+type TicketAccessCodesRow = {
+  id: string;
+  tenant_id: string;
+  cpf_hash: string;
+  attendee_id: string | null;
+  code_hash: string | null;
+  expires_at: string | null;
+  attempts: number;
+  consumed_at: string | null;
+  request_ip: string | null;
+  created_at: string;
+};
+
 type TicketsRow = {
   id: string;
   tenant_id: string;
@@ -1019,6 +1032,22 @@ export type Database = {
         Update: Partial<TenantsRow>;
         Relationships: [];
       };
+      ticket_access_codes: {
+        Row: TicketAccessCodesRow;
+        Insert: Insertable<
+          TicketAccessCodesRow,
+          | "id"
+          | "attendee_id"
+          | "code_hash"
+          | "expires_at"
+          | "attempts"
+          | "consumed_at"
+          | "request_ip"
+          | "created_at"
+        >;
+        Update: Partial<TicketAccessCodesRow>;
+        Relationships: [];
+      };
       tickets: {
         Row: TicketsRow;
         Insert: Insertable<
@@ -1139,6 +1168,8 @@ export type Database = {
       requeue_stale_outbox_jobs: { Args: { p_older_than?: string }; Returns: number };
       release_outbox_job: { Args: { p_id: string }; Returns: undefined };
       retry_messages: { Args: { p_job_ids: string[] }; Returns: Json };
+      request_ticket_code: { Args: { p_cpf: string; p_context?: Json }; Returns: Json };
+      verify_ticket_code: { Args: { p_cpf: string; p_code: string }; Returns: Json };
     };
     Enums: {
       audit_action: AuditAction;

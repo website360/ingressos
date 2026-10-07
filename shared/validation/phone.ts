@@ -77,3 +77,23 @@ export function toWhatsAppNumber(input: string): string | null {
   const local = digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
   return isValidBrPhone(local) ? `55${local}` : null;
 }
+
+/**
+ * Formata o número como ele é GUARDADO nas tabelas de WhatsApp: com DDI.
+ *
+ * `formatBrPhone` espera número nacional — dar a ela `5511963059112` faz o
+ * corte em 11 dígitos virar `(55) 11963-0591`, que não é telefone nenhum.
+ * Existe porque a alternativa era cada tela tirar o `55` por conta própria, e
+ * bastou uma esquecer para o número aparecer errado no painel.
+ *
+ * Só tira o prefixo quando o tamanho fecha com DDI + nacional (12 ou 13
+ * dígitos) — assim um fixo do DDD 55 guardado sem DDI continua intacto.
+ */
+export function formatWhatsAppNumber(stored: string): string {
+  const digits = onlyDigits(stored);
+  const local =
+    digits.startsWith("55") && (digits.length === 12 || digits.length === 13)
+      ? digits.slice(2)
+      : digits;
+  return formatBrPhone(local);
+}

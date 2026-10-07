@@ -20,7 +20,7 @@ import { ConnectionPanel } from "@/features/whatsapp/components/connection-panel
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
-import { formatBrPhone } from "@shared/validation/phone";
+import { formatWhatsAppNumber } from "@shared/validation/phone";
 import { getRepositories } from "@/repositories";
 
 export const metadata: Metadata = { title: "Conexão do WhatsApp" };
@@ -105,7 +105,9 @@ export default async function WhatsappPage() {
                 <TableBody>
                   {messages.map((message) => (
                     <TableRow key={message.id}>
-                      <TableCell className="text-sm">{formatBrPhone(message.to_phone)}</TableCell>
+                      <TableCell className="text-sm">
+                        {formatWhatsAppNumber(message.to_phone)}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {message.template}
                       </TableCell>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toWhatsAppNumber } from "@shared/validation/phone";
+import { formatWhatsAppNumber, toWhatsAppNumber } from "@shared/validation/phone";
 import {
   buildWebhookBody,
   extractQrCode,
@@ -34,6 +34,24 @@ describe("número do WhatsApp", () => {
     expect(toWhatsAppNumber("123")).toBeNull();
     expect(toWhatsAppNumber("")).toBeNull();
     expect(toWhatsAppNumber("0011987654321")).toBeNull();
+  });
+});
+
+describe("exibição do número guardado", () => {
+  it("tira o DDI antes de formatar", () => {
+    // O defeito: formatBrPhone recebendo 13 dígitos cortava em 11 e produzia
+    // "(55) 11963-0591", que não é telefone nenhum.
+    expect(formatWhatsAppNumber("5511963059112")).toBe("(11) 96305-9112");
+    expect(formatWhatsAppNumber("551133334444")).toBe("(11) 3333-4444");
+  });
+
+  it("deixa em paz o número já nacional", () => {
+    expect(formatWhatsAppNumber("11963059112")).toBe("(11) 96305-9112");
+  });
+
+  it("não confunde DDI com o DDD 55", () => {
+    // 10 dígitos começando em 55 é fixo de Santa Maria/RS, não DDI.
+    expect(formatWhatsAppNumber("5533334444")).toBe("(55) 3333-4444");
   });
 });
 

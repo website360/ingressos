@@ -9,6 +9,8 @@
  * Sem `server-only`: é função pura, e o teste unitário importa daqui.
  */
 
+import { TICKET_CODE_TTL_MINUTES } from "@shared/schemas/second-copy";
+
 export interface WhatsappPayload {
   phone: string;
   name?: string;
@@ -19,6 +21,8 @@ export interface WhatsappPayload {
   number?: string;
   ticket_code?: string;
   token?: string;
+  /** Código de seis dígitos da segunda via. */
+  code?: string;
 }
 
 export interface WhatsappContent {
@@ -75,6 +79,25 @@ export function renderWhatsapp(
       ];
 
       return { body: lines.filter((line) => line !== null).join("\n"), attachTicketQr: false };
+    }
+
+    /**
+     * Código da segunda via.
+     *
+     * Sem link e sem QR: quem tem o código ainda precisa digitá-lo na tela que
+     * pediu. Mandar o ingresso junto tornaria a conferência decorativa — e uma
+     * mensagem entregue no número errado entregaria a entrada do evento.
+     */
+    case "whatsapp.ticket_code": {
+      const lines = [
+        `Olá${name ? `, ${name}` : ""}! Seu código para ver o ingresso é *${payload.code}*.`,
+        "",
+        `Ele vale por ${TICKET_CODE_TTL_MINUTES} minutos. Digite na tela em que você pediu a segunda via.`,
+        "",
+        "Se não foi você que pediu, ignore esta mensagem.",
+      ];
+
+      return { body: lines.join("\n"), attachTicketQr: false };
     }
 
     default:

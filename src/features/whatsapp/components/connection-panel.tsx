@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, LogOut, QrCode, RefreshCw, Smartphone } from "lucide-react";
 
-import { formatBrPhone } from "@shared/validation/phone";
+import { formatWhatsAppNumber } from "@shared/validation/phone";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -135,7 +135,9 @@ export function ConnectionPanel({ connection, canManage, appUrl }: Props) {
 
         <CardContent className="flex flex-wrap items-center gap-3">
           <Badge variant={STATE_VARIANT[state]}>{STATE_LABEL[state]}</Badge>
-          {phone && <span className="text-sm text-muted-foreground">{formatBrPhone(phone)}</span>}
+          {phone && (
+            <span className="text-sm text-muted-foreground">{formatWhatsAppNumber(phone)}</span>
+          )}
           {connection.last_connected_at && state === "conectado" && (
             <span className="text-xs text-muted-foreground">
               desde {new Date(connection.last_connected_at).toLocaleString("pt-BR")}

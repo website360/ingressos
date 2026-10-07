@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Mail, MessageCircle, RefreshCw, Search } from "lucide-react";
 
-import { formatBrPhone } from "@shared/validation/phone";
+import { formatWhatsAppNumber } from "@shared/validation/phone";
 
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -247,7 +247,7 @@ export function MessageLog({ rows, pacing, canRetry, events }: Props) {
 
                       <TableCell className="text-sm">
                         {row.channel === "whatsapp" && row.recipient
-                          ? formatBrPhone(row.recipient.replace(/^55/, ""))
+                          ? formatWhatsAppNumber(row.recipient)
                           : row.recipient}
                         {row.last_error && (
                           <p className="mt-0.5 line-clamp-1 text-xs text-destructive">

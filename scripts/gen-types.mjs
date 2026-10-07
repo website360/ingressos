@@ -60,6 +60,11 @@ const FUNCTIONS = {
   // Reenvio em massa — EXECUTE para authenticated, com a permissão
   // checada dentro da função (ver 20260801093400).
   retry_messages: { args: "{ p_job_ids: string[] }", returns: "Json" },
+  // Segunda via do ingresso — EXECUTE para anon, porque quem perdeu o link não
+  // tem login. Os limites por IP e por CPF vivem dentro das funções
+  // (ver 20260801093600).
+  request_ticket_code: { args: "{ p_cpf: string; p_context?: Json }", returns: "Json" },
+  verify_ticket_code: { args: "{ p_cpf: string; p_code: string }", returns: "Json" },
 };
 
 function loadDatabaseUrl() {

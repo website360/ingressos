@@ -53,6 +53,7 @@ export const ROUTES = {
     registration: (slug: string) => `/evento/${slug}/inscricao`,
     registrationSuccess: (slug: string) => `/evento/${slug}/inscricao/sucesso`,
     ticket: (token: string) => `/ingresso/${token}`,
+    secondCopy: "/segunda-via",
     calendar: (token: string) => `/api/tickets/${token}/calendar`,
     ticketPdf: (token: string) => `/api/tickets/${token}/pdf`,
   },

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { TICKET_CODE_TTL_MINUTES } from "@shared/schemas/second-copy";
+
 /**
  * Templates de e-mail transacional.
  *
@@ -56,6 +58,8 @@ export interface EmailPayload {
   number?: string;
   ticket_code?: string;
   token?: string;
+  /** Código de seis dígitos da segunda via. */
+  code?: string;
 }
 
 export function renderEmail(type: string, payload: EmailPayload, appUrl: string): EmailContent {
@@ -125,6 +129,38 @@ export function renderEmail(type: string, payload: EmailPayload, appUrl: string)
         ),
         text: `Olá, ${name}!\n\n${payload.event_name} acontece em breve.\n${payload.event_starts_at ? formatWhen(payload.event_starts_at) : ""}\n\nSeu ingresso: ${appUrl}/ingresso/${payload.token}`,
       };
+
+    /**
+     * Código da segunda via.
+     *
+     * Sem link para o ingresso: o código serve para abrir a lista na tela onde
+     * foi pedido, e um e-mail que já trouxesse o ingresso tornaria a
+     * conferência inútil — bastaria ter acesso à caixa de entrada, que é
+     * justamente o que a pessoa diz ter perdido.
+     */
+    case "email.ticket_code": {
+      return {
+        subject: `Seu código: ${payload.code}`,
+        html: layout(
+          "Código da segunda via",
+          `<p style="margin:0 0 14px;font-size:16px">Olá${name ? `, ${name}` : ""}!</p>
+           <p style="margin:0 0 18px;font-size:14px;line-height:1.6">
+             Use o código abaixo na tela em que você pediu a segunda via do ingresso.
+           </p>
+           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:20px">
+             <tr><td align="center" style="font-size:32px;font-weight:700;letter-spacing:8px;color:#0f172a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">
+               ${payload.code}
+             </td></tr>
+           </table>
+           <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6">
+             O código vale por ${TICKET_CODE_TTL_MINUTES} minutos e só pode ser usado uma vez.
+             Se não foi você que pediu, ignore este e-mail — nada acontece sem o código.
+           </p>`,
+          "Você recebeu este e-mail porque alguém pediu a segunda via de um ingresso com o seu CPF.",
+        ),
+        text: `Olá${name ? `, ${name}` : ""}!\n\nSeu código para ver o ingresso: ${payload.code}\n\nEle vale por ${TICKET_CODE_TTL_MINUTES} minutos e só pode ser usado uma vez. Digite na tela em que você pediu a segunda via.\n\nSe não foi você que pediu, ignore este e-mail.`,
+      };
+    }
 
     default:
       throw new Error(`Template de e-mail desconhecido: ${type}`);
