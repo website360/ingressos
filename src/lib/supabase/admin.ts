@@ -10,7 +10,14 @@ import type { Database } from "./database.types";
  * Uso permitido apenas em:
  *  - rotinas de plataforma (super admin);
  *  - workers/jobs do servidor;
- *  - operações de convite e provisionamento de tenant.
+ *  - operações de convite e provisionamento de tenant;
+ *  - actions públicas cuja RPC é fechada ao service_role de propósito, para que
+ *    o chamador não possa forjar o que a função usa como limite — hoje só a
+ *    segunda via do ingresso, que limita por IP (20260801093800).
+ *
+ * O último caso é o que mais pede cuidado, porque a chamada nasce de um pedido
+ * anônimo: vale apenas quando a action se restringe a invocar a RPC, sem
+ * nenhuma consulta livre, já que o service role ignora RLS.
  *
  * NUNCA importar em componentes de cliente. O import de "server-only"
  * transforma qualquer violação em erro de build.
