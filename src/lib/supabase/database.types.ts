@@ -166,16 +166,6 @@ type EventFaqsRow = {
   created_at: string;
 };
 
-type FaqTemplatesRow = {
-  id: string;
-  tenant_id: string;
-  question: string;
-  answer: string;
-  position: number;
-  created_at: string;
-  updated_at: string;
-};
-
 type EventMediaRow = {
   id: string;
   tenant_id: string;
@@ -273,6 +263,16 @@ type EventsRow = {
   created_by: string | null;
   updated_by: string | null;
   location: unknown | null;
+};
+
+type FaqTemplatesRow = {
+  id: string;
+  tenant_id: string;
+  question: string;
+  answer: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
 };
 
 type MembershipsRow = {

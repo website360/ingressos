@@ -4,6 +4,7 @@ import { faqTemplateListSchema } from "@shared/schemas/faq-template";
 
 import {
   buildEventFaqs,
+  duplicatedChoices,
   initialFaqChoices,
   newTemplatesFrom,
   type FaqChoice,
@@ -27,6 +28,14 @@ describe("perguntas padrão", () => {
       faqTemplateListSchema.safeParse({ items: [{ question: "Tem estacionamento?", answer: "" }] })
         .success,
     ).toBe(false);
+  });
+
+  it("recusa a mesma pergunta duas vezes, sem diferenciar maiúsculas", () => {
+    const result = faqTemplateListSchema.safeParse({
+      items: [templates[0]!, { question: "tem estacionamento? ", answer: "Não." }],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["items", 1, "question"]);
   });
 
   it("recusa mais de 60 perguntas", () => {
@@ -118,5 +127,25 @@ describe("escolha das perguntas do evento", () => {
       },
     ];
     expect(newTemplatesFrom(choices)).toEqual([{ question: "Tem almoço?", answer: "Sim." }]);
+  });
+});
+
+describe("pergunta repetida no evento", () => {
+  const base = { answer: "Sim.", saveAsTemplate: false };
+
+  it("aponta a personalizada que repete um padrão marcado", () => {
+    const choices: FaqChoice[] = [
+      { ...base, templateId: "t1", question: "Tem estacionamento?", checked: true },
+      { ...base, templateId: null, question: "tem estacionamento? ", checked: true },
+    ];
+    expect(duplicatedChoices(choices)).toEqual([1]);
+  });
+
+  it("ignora o padrão desmarcado", () => {
+    const choices: FaqChoice[] = [
+      { ...base, templateId: "t1", question: "Tem estacionamento?", checked: false },
+      { ...base, templateId: null, question: "Tem estacionamento?", checked: true },
+    ];
+    expect(duplicatedChoices(choices)).toEqual([]);
   });
 });

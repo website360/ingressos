@@ -45,6 +45,7 @@ import {
 import { contentFormDefaults, eventFormDefaults } from "@/features/events/lib/event-defaults";
 import {
   buildEventFaqs,
+  duplicatedChoices,
   initialFaqChoices,
   newTemplatesFrom,
   type FaqChoice,
@@ -142,22 +143,29 @@ function WizardBody({
     defaultValues: contentFormDefaults(),
   });
 
+  // O react-hook-form só calcula `isDirty`/`dirtyFields` para quem os lê durante
+  // a renderização. Sem estas leituras, os handlers abaixo veriam sempre
+  // "nada mudou" — e o "Próximo" seguiria sem salvar.
+  const eventDirty = eventForm.formState.isDirty;
+  const slugTouched = Boolean(eventForm.formState.dirtyFields.slug);
+  const contentDirty = contentForm.formState.isDirty;
+
   // Enquanto o evento não existe, o endereço na web acompanha o nome — até a
   // pessoa mexer nele.
   const name = eventForm.watch("name");
   React.useEffect(() => {
-    if (!eventId && !eventForm.formState.dirtyFields.slug && name) {
+    if (!eventId && !slugTouched && name) {
       eventForm.setValue("slug", slugify(name));
     }
-  }, [name, eventId, eventForm]);
+  }, [name, eventId, slugTouched, eventForm]);
 
   const step = WIZARD_STEPS[current]!;
   const isLast = current === WIZARD_STEPS.length - 1;
   const faqsDirty = JSON.stringify(faqs) !== JSON.stringify(savedFaqs);
 
   function isStepDirty(target: WizardStep): boolean {
-    if (target.kind === "event" || target.kind === "review") return eventForm.formState.isDirty;
-    if (target.kind === "content") return contentForm.formState.isDirty;
+    if (target.kind === "event" || target.kind === "review") return eventDirty;
+    if (target.kind === "content") return contentDirty;
     if (target.kind === "faqs") return faqsDirty;
     return false;
   }
@@ -219,6 +227,9 @@ function WizardBody({
         const parsed = faqSchema.safeParse(choice);
         if (!parsed.success) errors[index] = parsed.error.issues[0]!.message;
       });
+      for (const index of duplicatedChoices(faqs)) {
+        errors[index] ??= "Esta pergunta já está na lista acima.";
+      }
       setFaqErrors(errors);
       if (Object.keys(errors).length) return false;
 

@@ -71,3 +71,28 @@ export function newTemplatesFrom(choices: FaqChoice[]): FaqTemplateInput[] {
     .filter((choice) => choice.templateId === null && choice.checked && choice.saveAsTemplate)
     .map(({ question, answer }) => ({ question: question.trim(), answer: answer.trim() }));
 }
+
+/**
+ * Índices das perguntas marcadas que repetem outra marcada antes delas (sem
+ * diferenciar maiúsculas). Uma personalizada igual a um padrão sairia duas
+ * vezes na página do evento.
+ */
+export function duplicatedChoices(choices: FaqChoice[]): number[] {
+  const seen = new Set<string>();
+  const duplicated: number[] = [];
+
+  // Padrões primeiro, na mesma ordem de `buildEventFaqs`: quem repete é a
+  // personalizada, e é nela que o aviso deve aparecer.
+  const ordered = choices
+    .map((choice, index) => ({ choice, index }))
+    .filter(({ choice }) => choice.checked)
+    .sort((a, b) => Number(a.choice.templateId === null) - Number(b.choice.templateId === null));
+
+  for (const { choice, index } of ordered) {
+    const k = key(choice.question);
+    if (!k) continue;
+    if (seen.has(k)) duplicated.push(index);
+    seen.add(k);
+  }
+  return duplicated.sort((a, b) => a - b);
+}
