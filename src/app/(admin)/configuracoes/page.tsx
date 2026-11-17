@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CompanyForm } from "@/features/settings/components/company-form";
+import { FaqTemplatesForm } from "@/features/settings/components/faq-templates-form";
 import { EvolutionServerForm } from "@/features/whatsapp/components/evolution-server-form";
 import { WhatsappPacingForm } from "@/features/whatsapp/components/pacing-form";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
@@ -44,15 +45,24 @@ interface MemberRow {
   } | null;
 }
 
-export default async function SettingsPage() {
+const TABS = ["empresa", "usuarios", "permissoes", "emails", "whatsapp", "perguntas"] as const;
+
+interface PageProps {
+  searchParams: Promise<{ aba?: string }>;
+}
+
+export default async function SettingsPage({ searchParams }: PageProps) {
+  const { aba } = await searchParams;
+  const defaultTab = TABS.includes(aba as (typeof TABS)[number]) ? aba! : "empresa";
   const session = await requireAnyPermission([PERMISSIONS.SETTINGS_READ, PERMISSIONS.USER_READ]);
 
-  const { operations, tenant, whatsapp } = await getRepositories();
-  const [members, settings, company, connection] = await Promise.all([
+  const { operations, tenant, whatsapp, events } = await getRepositories();
+  const [members, settings, company, connection, faqTemplates] = await Promise.all([
     operations.listUsers().catch(() => []),
     tenant.listSettings(session.activeTenantId!).catch(() => ({})),
     tenant.findById(session.activeTenantId!).catch(() => null),
     whatsapp.find(session.activeTenantId!).catch(() => null),
+    events.listFaqTemplates().catch(() => []),
   ]);
 
   const rows = members as unknown as MemberRow[];
@@ -64,13 +74,14 @@ export default async function SettingsPage() {
         description="Empresa, usuários, permissões e integrações."
       />
 
-      <Tabs defaultValue="empresa">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="permissoes">Perfis</TabsTrigger>
           <TabsTrigger value="emails">E-mails</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          <TabsTrigger value="perguntas">Perguntas padrão</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa" className="space-y-4">
@@ -240,6 +251,12 @@ export default async function SettingsPage() {
               </CardDescription>
             </CardHeader>
           </Card>
+        </TabsContent>
+        <TabsContent value="perguntas">
+          <FaqTemplatesForm
+            templates={faqTemplates}
+            canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+          />
         </TabsContent>
       </Tabs>
     </>

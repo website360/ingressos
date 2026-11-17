@@ -30,6 +30,7 @@ export const ROUTES = {
       emails: "/configuracoes/emails",
       whatsapp: "/configuracoes#whatsapp",
       api: "/configuracoes/api",
+      faqTemplates: "/configuracoes?aba=perguntas",
     },
     profile: "/perfil",
     security: "/seguranca",
