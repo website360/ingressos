@@ -17,6 +17,7 @@ import {
 import { EMAIL_STATUS } from "@/config/status-maps";
 import { ROUTES } from "@/constants/routes";
 import { ConnectionPanel } from "@/features/whatsapp/components/connection-panel";
+import { MetaStatusCard } from "@/features/whatsapp/components/meta-status-card";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
@@ -58,17 +59,20 @@ export default async function WhatsappPage() {
               <MessageCircle className="size-4" /> Integração não configurada
             </CardTitle>
             <CardDescription>
-              Antes de parear o celular, informe o endereço e a chave do servidor Evolution.
+              Escolha em Configurações → WhatsApp como os ingressos serão enviados: pela Evolution
+              (pareando um celular) ou pela API oficial da Meta.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href={ROUTES.admin.settings.root}>
+              <Link href={`${ROUTES.admin.settings.root}?aba=whatsapp`}>
                 <Settings /> Ir para Configurações
               </Link>
             </Button>
           </CardContent>
         </Card>
+      ) : connection.provider === "meta" ? (
+        <MetaStatusCard connection={connection} canManage={canManage} />
       ) : (
         <ConnectionPanel
           connection={connection}

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   sendEmailJob,
   sendWhatsappJob,
+  WHATSAPP_CONNECTION_COLUMNS,
   type Admin,
   type OutboxJob,
   type WhatsappConnection,
@@ -53,9 +54,7 @@ function connectionLoader(admin: Admin) {
     if (!cache.has(tenantId)) {
       const { data } = await admin
         .from("whatsapp_connections")
-        .select(
-          "base_url, api_key, instance_name, instance_token, state, send_interval_seconds, daily_send_limit",
-        )
+        .select(WHATSAPP_CONNECTION_COLUMNS)
         .eq("tenant_id", tenantId)
         .maybeSingle();
       cache.set(tenantId, data);

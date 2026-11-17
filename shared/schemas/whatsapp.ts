@@ -51,3 +51,47 @@ export const whatsappPacingSchema = z.object({
 });
 
 export type WhatsappPacingInput = z.infer<typeof whatsappPacingSchema>;
+
+/**
+ * Credenciais da API oficial (Meta Cloud API).
+ *
+ * Token e segredo do app seguem a regra da chave da Evolution: vazio mantém o
+ * que já está salvo, porque a tela nunca recebe os segredos de volta.
+ */
+const metaId = (label: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^[0-9]{5,30}$/, `${label}: só números, como aparece no painel da Meta.`);
+
+const templateName = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9_]{1,512}$/, "Use só minúsculas, números e _ (como no Gerenciador da Meta).");
+
+export const metaConnectionSchema = z.object({
+  access_token: z.union([
+    z.string().trim().min(20, "O token parece curto demais.").max(1000, "Token muito longo."),
+    z.literal(""),
+  ]),
+  app_secret: z.union([
+    z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9]{16,128}$/, "O segredo do app tem só letras e números (32 caracteres)."),
+    z.literal(""),
+  ]),
+  phone_number_id: metaId("ID do número"),
+  waba_id: z.union([metaId("ID da conta"), z.literal("")]),
+  templates: z.object({
+    confirmed: templateName,
+    cancelled: templateName,
+    code: templateName,
+    language: z
+      .string()
+      .trim()
+      .regex(/^[a-z]{2}(_[A-Z]{2})?$/, "Idioma no formato da Meta, como pt_BR."),
+  }),
+});
+
+export type MetaConnectionInput = z.infer<typeof metaConnectionSchema>;

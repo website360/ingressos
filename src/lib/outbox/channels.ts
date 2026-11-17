@@ -2,6 +2,8 @@ import "server-only";
 
 import { renderEmail, type EmailPayload } from "@/lib/email/templates";
 import { EvolutionClient } from "@/lib/evolution/client";
+import { MetaWhatsAppClient } from "@/lib/meta/client";
+import { buildMetaTemplate, resolveTemplateConfig } from "@/lib/meta/templates";
 import { ticketQrDataUrl } from "@/lib/qrcode";
 import type { Database } from "@/lib/supabase/database.types";
 import { renderWhatsapp, type WhatsappPayload } from "@/lib/whatsapp/templates";
@@ -45,14 +47,22 @@ function statusFor(job: OutboxJob, ok: boolean): Database["public"]["Enums"]["em
 }
 
 export interface WhatsappConnection {
+  provider: string;
   base_url: string;
+  /** Evolution: chave do servidor. Meta: token de acesso permanente. */
   api_key: string;
   instance_name: string | null;
   instance_token: string | null;
   state: string;
   send_interval_seconds: number;
   daily_send_limit: number;
+  meta_phone_number_id: string | null;
+  meta_templates: unknown;
 }
+
+/** Colunas que a rota do worker precisa ler da conexão. */
+export const WHATSAPP_CONNECTION_COLUMNS =
+  "provider, base_url, api_key, instance_name, instance_token, state, send_interval_seconds, daily_send_limit, meta_phone_number_id, meta_templates";
 
 /** Colunas comuns às duas tabelas de log. */
 function baseRow(job: OutboxJob, ok: boolean, error: string | null, providerId: string | null) {
@@ -162,7 +172,9 @@ export async function sendWhatsappJob(
     throw new Error(message);
   };
 
-  if (!connection || !connection.instance_name) {
+  const isMeta = connection?.provider === "meta";
+
+  if (!connection || (isMeta ? !connection.meta_phone_number_id : !connection.instance_name)) {
     return fail("WhatsApp não configurado para esta empresa.");
   }
 
@@ -192,12 +204,14 @@ export async function sendWhatsappJob(
   try {
     let providerId: string | null;
 
-    if (content.attachTicketQr && job.payload.token) {
+    if (isMeta) {
+      providerId = await sendViaMeta(connection, job, number, content.attachTicketQr);
+    } else if (content.attachTicketQr && job.payload.token) {
       const dataUrl = await ticketQrDataUrl(job.payload.token);
       const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
 
       providerId = await client.sendMedia(
-        connection.instance_name,
+        connection.instance_name!,
         number,
         base64,
         content.body,
@@ -206,7 +220,7 @@ export async function sendWhatsappJob(
       );
     } else {
       providerId = await client.sendText(
-        connection.instance_name,
+        connection.instance_name!,
         number,
         content.body,
         connection.instance_token,
@@ -229,4 +243,42 @@ export async function sendWhatsappJob(
       );
     throw error;
   }
+}
+
+/**
+ * Envio pela API oficial: sempre por modelo aprovado. Na confirmação, o QR do
+ * ingresso sobe antes como mídia e entra no cabeçalho do modelo.
+ *
+ * O texto gravado no log continua sendo o da renderização comum — é a prévia
+ * legível do que a pessoa recebeu; o texto exato mora no modelo da Meta.
+ */
+async function sendViaMeta(
+  connection: WhatsappConnection,
+  job: OutboxJob,
+  number: string,
+  attachTicketQr: boolean,
+): Promise<string | null> {
+  const client = new MetaWhatsAppClient({
+    baseUrl: connection.base_url,
+    accessToken: connection.api_key,
+    phoneNumberId: connection.meta_phone_number_id!,
+  });
+
+  let headerMediaId: string | undefined;
+  if (attachTicketQr && job.payload.token) {
+    const dataUrl = await ticketQrDataUrl(job.payload.token);
+    const png = Buffer.from(dataUrl.replace(/^data:image\/\w+;base64,/, ""), "base64");
+    headerMediaId = await client.uploadImage(
+      png,
+      `ingresso-${job.payload.ticket_code ?? "qrcode"}.png`,
+    );
+  }
+
+  const template = buildMetaTemplate(
+    job.type,
+    job.payload,
+    resolveTemplateConfig(connection.meta_templates),
+    { headerMediaId },
+  );
+  return client.sendTemplate(number, template);
 }

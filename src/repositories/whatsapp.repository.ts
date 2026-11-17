@@ -10,7 +10,10 @@ export type WhatsappMessage = Tables<"whatsapp_messages">;
  * não é legível por `authenticated` (ver a migration 20260801093100), então
  * pedi-las devolveria erro de permissão, não `null`.
  */
-export type WhatsappConnectionView = Omit<WhatsappConnection, "api_key" | "instance_token">;
+export type WhatsappConnectionView = Omit<
+  WhatsappConnection,
+  "api_key" | "instance_token" | "webhook_secret" | "meta_app_secret"
+>;
 
 const VISIBLE = [
   "tenant_id",
@@ -30,6 +33,11 @@ const VISIBLE = [
   "created_at",
   "updated_at",
   "updated_by",
+  "provider",
+  "meta_phone_number_id",
+  "meta_waba_id",
+  "meta_verify_token",
+  "meta_templates",
 ].join(", ");
 
 export class WhatsappRepository extends BaseRepository {

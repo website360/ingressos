@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { CompanyForm } from "@/features/settings/components/company-form";
 import { FaqTemplatesForm } from "@/features/settings/components/faq-templates-form";
-import { EvolutionServerForm } from "@/features/whatsapp/components/evolution-server-form";
+import { WhatsappProviderSettings } from "@/features/whatsapp/components/whatsapp-provider-settings";
 import { WhatsappPacingForm } from "@/features/whatsapp/components/pacing-form";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireAnyPermission } from "@/lib/auth/session";
@@ -226,9 +226,10 @@ export default async function SettingsPage({ searchParams }: PageProps) {
           </Card>
         </TabsContent>
         <TabsContent value="whatsapp" className="space-y-4">
-          <EvolutionServerForm
+          <WhatsappProviderSettings
             connection={connection}
             canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+            appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
           />
 
           {connection && (
@@ -245,9 +246,10 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                 <MessageCircle className="size-4" /> Como funciona
               </CardTitle>
               <CardDescription>
-                Aqui ficam os dados do servidor. O celular é pareado em Conexão do WhatsApp, no menu
-                lateral — com o número conectado, cada inscrição confirmada dispara dois envios
-                independentes: o e-mail de sempre e o ingresso pelo WhatsApp.
+                Com o WhatsApp ativo, cada inscrição confirmada dispara dois envios independentes: o
+                e-mail de sempre e o ingresso pelo WhatsApp. Na Evolution, o celular é pareado em
+                Conexão do WhatsApp, no menu lateral; na API oficial, basta salvar as credenciais
+                com os modelos aprovados.
               </CardDescription>
             </CardHeader>
           </Card>

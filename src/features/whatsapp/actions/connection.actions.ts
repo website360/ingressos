@@ -63,6 +63,14 @@ async function loadConnection(tenantId: string): Promise<WhatsappConnection> {
   if (!connection) {
     throw new AppError("NOT_FOUND", "Configure o servidor Evolution antes de conectar o celular.");
   }
+  // Parear, atualizar e desconectar são operações da Evolution; com a Meta, o
+  // `api_key` é o token da Meta e iria parar num servidor Evolution.
+  if (connection.provider === "meta") {
+    throw new AppError(
+      "VALIDATION",
+      "Esta empresa usa a API oficial da Meta — não há celular para parear.",
+    );
+  }
   return connection;
 }
 
@@ -86,7 +94,9 @@ export async function saveEvolutionServer(
     const repo = adminRepo();
 
     const existing = await repo.findWithSecret(session.activeTenantId!);
-    const apiKey = data.api_key || existing?.api_key;
+    const wasMeta = existing?.provider === "meta";
+    // Vindo da Meta, o `api_key` salvo é o token da Meta — não serve aqui.
+    const apiKey = data.api_key || (wasMeta ? undefined : existing?.api_key);
 
     if (!apiKey) {
       throw new AppError("VALIDATION", "Informe a chave de API do servidor Evolution.", {
@@ -109,6 +119,17 @@ export async function saveEvolutionServer(
       updated_by: session.user.id,
       // Trocar de servidor invalida a instância antiga: o nome pode até existir
       // lá, mas a sessão pareada não vem junto.
+      provider: "evolution",
+      // Voltar da Meta para a Evolution: as credenciais da Meta saem junto.
+      ...(wasMeta
+        ? {
+            meta_phone_number_id: null,
+            meta_waba_id: null,
+            meta_app_secret: null,
+            meta_verify_token: null,
+            phone_number: null,
+          }
+        : {}),
       ...(existing && existing.base_url !== data.base_url
         ? {
             instance_name: null,

@@ -630,6 +630,12 @@ type WhatsappConnectionsRow = {
   webhook_secret: string | null;
   send_interval_seconds: number;
   daily_send_limit: number;
+  provider: string;
+  meta_phone_number_id: string | null;
+  meta_waba_id: string | null;
+  meta_app_secret: string | null;
+  meta_verify_token: string | null;
+  meta_templates: Json;
 };
 
 type WhatsappMessagesRow = {
@@ -1113,6 +1119,12 @@ export type Database = {
           | "webhook_secret"
           | "send_interval_seconds"
           | "daily_send_limit"
+          | "provider"
+          | "meta_phone_number_id"
+          | "meta_waba_id"
+          | "meta_app_secret"
+          | "meta_verify_token"
+          | "meta_templates"
         >;
         Update: Partial<WhatsappConnectionsRow>;
         Relationships: [];

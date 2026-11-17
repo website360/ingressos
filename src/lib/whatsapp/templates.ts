@@ -32,7 +32,7 @@ export interface WhatsappContent {
   attachTicketQr: boolean;
 }
 
-function formatWhen(iso: string): string {
+export function formatWhen(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "full",
     timeStyle: "short",
