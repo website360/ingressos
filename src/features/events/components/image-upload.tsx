@@ -16,6 +16,8 @@ interface Props {
   label: string;
   hint: string;
   currentUrl: string | null;
+  /** Avisa quem está em volta (o assistente guarda a URL entre as etapas). */
+  onChange?: (url: string | null) => void;
 }
 
 /**
@@ -25,7 +27,7 @@ interface Props {
  * e não ajuda: quem quer conferir o enquadramento abre a página pública. Aqui
  * basta saber se existe imagem e poder trocá-la.
  */
-export function ImageUpload({ eventId, kind, label, hint, currentUrl }: Props) {
+export function ImageUpload({ eventId, kind, label, hint, currentUrl, onChange }: Props) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [url, setUrl] = React.useState(currentUrl);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -55,6 +57,7 @@ export function ImageUpload({ eventId, kind, label, hint, currentUrl }: Props) {
       }
 
       setUrl(result.data.url);
+      onChange?.(result.data.url);
       toast.success(`${label} atualizada.`);
     } catch {
       // Erro lançado pelo framework — 413, rede caída, servidor reiniciando.
@@ -76,6 +79,7 @@ export function ImageUpload({ eventId, kind, label, hint, currentUrl }: Props) {
       }
 
       setUrl(null);
+      onChange?.(null);
       toast.success(`${label} removida.`);
     } catch {
       toast.error("Não foi possível remover a imagem. Tente novamente.");

@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarPlus } from "lucide-react";
 
 import { EventsTable } from "@/features/events/components/events-table";
+import { NewEventButton } from "@/features/events/components/new-event-button";
 import { ListFilters } from "@/components/shared/list-filters";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,11 @@ export default async function EventsPage({ searchParams }: PageProps) {
     offset: (page - 1) * PAGE_SIZE,
   });
 
-  const canCreate = session.permissions.includes(PERMISSIONS.EVENT_CREATE);
+  // O assistente grava cada etapa com event.update — só criar não basta.
+  const canCreate =
+    session.permissions.includes(PERMISSIONS.EVENT_CREATE) &&
+    session.permissions.includes(PERMISSIONS.EVENT_UPDATE);
+  const templates = canCreate ? await events.listFaqTemplates().catch(() => []) : [];
 
   return (
     <>
@@ -45,11 +49,13 @@ export default async function EventsPage({ searchParams }: PageProps) {
         description={`${total} ${total === 1 ? "evento cadastrado" : "eventos cadastrados"}`}
         actions={
           canCreate && (
-            <Button asChild>
-              <Link href={ROUTES.admin.eventNew}>
-                <CalendarPlus /> Novo evento
-              </Link>
-            </Button>
+            <Suspense fallback={null}>
+              <NewEventButton
+                templates={templates.map(({ id, question, answer }) => ({ id, question, answer }))}
+                canPublish={session.permissions.includes(PERMISSIONS.EVENT_PUBLISH)}
+                canManageSettings={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+              />
+            </Suspense>
           )
         }
       />

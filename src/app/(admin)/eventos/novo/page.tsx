@@ -1,22 +1,11 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { PageHeader } from "@/components/shared/page-header";
-import { EventForm } from "@/features/events/components/event-form";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { requirePermission } from "@/lib/auth/session";
+import { ROUTES } from "@/constants/routes";
 
-export const metadata: Metadata = { title: "Novo evento" };
-
-export default async function NewEventPage() {
-  await requirePermission(PERMISSIONS.EVENT_CREATE);
-
-  return (
-    <>
-      <PageHeader
-        title="Novo evento"
-        description="Salve como rascunho a qualquer momento. Publicar exige capacidade, data futura, cidade e descrição curta."
-      />
-      <EventForm />
-    </>
-  );
+/**
+ * A criação virou um assistente em modal na lista de eventos. Esta rota fica
+ * só para não quebrar links e favoritos antigos.
+ */
+export default function NewEventPage() {
+  redirect(`${ROUTES.admin.events}?novo=1`);
 }
