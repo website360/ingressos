@@ -15,27 +15,30 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
 import { getRepositories } from "@/repositories";
 
+export type ContentSection = "schedule" | "speakers" | "faqs" | "documents";
+
+const ALL_SECTIONS: ContentSection[] = ["schedule", "speakers", "faqs", "documents"];
+
+const nullable = (value?: string) => (value && value.trim() !== "" ? value.trim() : null);
+
 /**
- * Grava todo o conteúdo da landing numa chamada.
+ * Grava as seções pedidas do conteúdo da landing.
  *
  * Programação, palestrantes e FAQ são substituídos por completo — é como a
  * edição realmente acontece. Os documentos seguem outro caminho: cada alteração
  * publica uma VERSÃO nova, porque o aceite do participante referencia a versão
- * que ele leu (RF-05.4).
+ * que ele leu (RF-05.4). Texto idêntico não gera versão.
  */
-export async function saveEventContent(
+async function writeSections(
+  tenantId: string,
   eventId: string,
-  input: EventContentInput,
-): Promise<Result<{ eventId: string }>> {
-  try {
-    const session = await requirePermission(PERMISSIONS.EVENT_UPDATE);
-    const data = eventContentSchema.parse(input);
-    const tenantId = session.activeTenantId!;
+  data: EventContentInput,
+  sections: ContentSection[],
+) {
+  const { events } = await getRepositories();
+  const base = { tenant_id: tenantId, event_id: eventId };
 
-    const { events } = await getRepositories();
-    const base = { tenant_id: tenantId, event_id: eventId };
-    const nullable = (value?: string) => (value && value.trim() !== "" ? value.trim() : null);
-
+  if (sections.includes("schedule")) {
     await events.replaceContent(
       "event_schedule_items",
       eventId,
@@ -49,7 +52,9 @@ export async function saveEventContent(
         description: nullable(item.description),
       })),
     );
+  }
 
+  if (sections.includes("speakers")) {
     await events.replaceContent(
       "event_speakers",
       eventId,
@@ -63,7 +68,9 @@ export async function saveEventContent(
         photo_url: nullable(item.photo_url),
       })),
     );
+  }
 
+  if (sections.includes("faqs")) {
     await events.replaceContent(
       "event_faqs",
       eventId,
@@ -74,7 +81,9 @@ export async function saveEventContent(
         answer: item.answer,
       })),
     );
+  }
 
+  if (sections.includes("documents")) {
     for (const [type, content] of [
       ["regulamento", data.regulamento],
       ["cancelamento", data.cancelamento],
@@ -84,9 +93,43 @@ export async function saveEventContent(
         await events.publishDocument(tenantId, eventId, type, content.trim());
       }
     }
+  }
 
-    revalidatePath(ROUTES.admin.event(eventId));
-    revalidatePath("/evento", "layout");
+  revalidatePath(ROUTES.admin.event(eventId));
+  revalidatePath("/evento", "layout");
+}
+
+/** Grava todo o conteúdo da landing numa chamada (tela de edição). */
+export async function saveEventContent(
+  eventId: string,
+  input: EventContentInput,
+): Promise<Result<{ eventId: string }>> {
+  try {
+    const session = await requirePermission(PERMISSIONS.EVENT_UPDATE);
+    const data = eventContentSchema.parse(input);
+    await writeSections(session.activeTenantId!, eventId, data, ALL_SECTIONS);
+    return ok({ eventId });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/**
+ * Grava uma seção só (assistente de criação). Cada etapa salva a sua parte sem
+ * tocar nas outras — salvar a programação não pode apagar as perguntas.
+ */
+export async function saveEventContentSection(
+  eventId: string,
+  section: ContentSection,
+  input: EventContentInput,
+): Promise<Result<{ eventId: string }>> {
+  try {
+    const session = await requirePermission(PERMISSIONS.EVENT_UPDATE);
+    if (!ALL_SECTIONS.includes(section)) {
+      throw new AppError("VALIDATION", "Seção desconhecida.");
+    }
+    const data = eventContentSchema.parse(input);
+    await writeSections(session.activeTenantId!, eventId, data, [section]);
     return ok({ eventId });
   } catch (error) {
     return fail(error);

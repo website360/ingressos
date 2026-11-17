@@ -64,6 +64,28 @@ export async function createEvent(input: EventInput): Promise<Result<{ id: strin
     const { events } = await getRepositories();
     const event = await events.create(toRow(data, session.activeTenantId!));
 
+    // Perguntas padrão da empresa entram por cópia: editar o padrão depois não
+    // muda este evento. Gravar FAQ exige event.update (RLS); sem ela, o evento
+    // nasce sem perguntas — e a falha aqui não desfaz a criação.
+    if (session.permissions.includes(PERMISSIONS.EVENT_UPDATE)) {
+      try {
+        const templates = await events.listFaqTemplates();
+        await events.replaceContent(
+          "event_faqs",
+          event.id,
+          templates.map((template, index) => ({
+            tenant_id: session.activeTenantId!,
+            event_id: event.id,
+            position: index,
+            question: template.question,
+            answer: template.answer,
+          })),
+        );
+      } catch (error) {
+        console.error("[createEvent] cópia das perguntas padrão falhou", error);
+      }
+    }
+
     revalidatePath(ROUTES.admin.events);
     return ok({ id: event.id });
   } catch (error) {

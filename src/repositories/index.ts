@@ -10,7 +10,7 @@ import { RegistrationRepository } from "./registration.repository";
 import { TenantRepository } from "./tenant.repository";
 import { WhatsappRepository } from "./whatsapp.repository";
 
-export type { EventStats, Event, Category } from "./event.repository";
+export type { EventStats, Event, Category, FaqTemplate } from "./event.repository";
 export type { RegistrationRow } from "./registration.repository";
 export type { CheckinAlert } from "./checkin.repository";
 export type { DashboardKpis } from "./operations.repository";

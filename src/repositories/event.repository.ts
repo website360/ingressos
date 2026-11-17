@@ -11,6 +11,7 @@ import { BaseRepository, type Client } from "./base.repository";
 export type Event = Tables<"events">;
 export type EventStats = Views<"v_event_stats">;
 export type Category = Tables<"categories">;
+export type FaqTemplate = Tables<"faq_templates">;
 
 export interface EventFilters {
   q?: string;
@@ -161,6 +162,62 @@ export class EventRepository extends BaseRepository {
       version: (latest?.version ?? 0) + 1,
       content,
     });
+    if (error) throw error;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Perguntas frequentes padrão da empresa
+  // ---------------------------------------------------------------------------
+
+  async listFaqTemplates(): Promise<FaqTemplate[]> {
+    const { data, error } = await this.client
+      .from("faq_templates")
+      .select("*")
+      .order("position")
+      .order("created_at");
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /** Substitui a lista inteira — é como a tela de configurações edita. */
+  async replaceFaqTemplates(
+    tenantId: string,
+    items: { question: string; answer: string }[],
+  ): Promise<void> {
+    const { error: deleteError } = await this.client
+      .from("faq_templates")
+      .delete()
+      .eq("tenant_id", tenantId);
+    if (deleteError) throw deleteError;
+
+    if (items.length === 0) return;
+
+    const { error } = await this.client
+      .from("faq_templates")
+      .insert(items.map((item, index) => ({ ...item, tenant_id: tenantId, position: index })));
+    if (error) throw error;
+  }
+
+  /** Acrescenta ao fim da lista — usado pelo "salvar também como padrão". */
+  async appendFaqTemplates(
+    tenantId: string,
+    items: { question: string; answer: string }[],
+  ): Promise<void> {
+    if (items.length === 0) return;
+
+    const { data: last } = await this.client
+      .from("faq_templates")
+      .select("position")
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const start = (last?.position ?? -1) + 1;
+
+    const { error } = await this.client
+      .from("faq_templates")
+      .insert(
+        items.map((item, index) => ({ ...item, tenant_id: tenantId, position: start + index })),
+      );
     if (error) throw error;
   }
 

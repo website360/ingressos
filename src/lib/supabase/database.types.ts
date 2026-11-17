@@ -166,6 +166,16 @@ type EventFaqsRow = {
   created_at: string;
 };
 
+type FaqTemplatesRow = {
+  id: string;
+  tenant_id: string;
+  question: string;
+  answer: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
 type EventMediaRow = {
   id: string;
   tenant_id: string;
@@ -854,6 +864,12 @@ export type Database = {
           | "location"
         >;
         Update: Partial<EventsRow>;
+        Relationships: [];
+      };
+      faq_templates: {
+        Row: FaqTemplatesRow;
+        Insert: Insertable<FaqTemplatesRow, "id" | "position" | "created_at" | "updated_at">;
+        Update: Partial<FaqTemplatesRow>;
         Relationships: [];
       };
       memberships: {
