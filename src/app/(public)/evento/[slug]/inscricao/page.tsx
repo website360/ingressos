@@ -27,9 +27,8 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      {/* Os dois destinos: um passo atrás e a agenda inteira. No celular, sem
-          o menu à vista, só o "voltar" do navegador levaria à home — e quem
-          abriu o link direto do WhatsApp não tem para onde voltar. */}
+      {/* Um passo atrás, explícito: quem abriu o link direto do WhatsApp não
+          tem histórico para o "voltar" do navegador usar. */}
       <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
         <Link
           href={ROUTES.public.event(event.slug)}
@@ -37,9 +36,6 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
         >
           <ArrowLeft className="size-4" />
           Voltar para o evento
-        </Link>
-        <Link href={ROUTES.home} className="transition-colors hover:text-foreground sm:hidden">
-          Ver todos os eventos
         </Link>
       </div>
 

@@ -158,10 +158,7 @@ function CpfStep({ onEnviado }: { onEnviado: (etapa: Etapa) => void }) {
             <AlertTitle>Nenhuma inscrição ativa com esse CPF</AlertTitle>
             <AlertDescription>
               Não encontramos inscrição confirmada em evento que ainda vai acontecer. Confira se
-              digitou o CPF certo — ou veja a agenda e faça sua inscrição.
-              <Link href={ROUTES.public.events} className="ml-1 font-medium underline">
-                Ver eventos
-              </Link>
+              digitou o CPF certo.
             </AlertDescription>
           </Alert>
         )}

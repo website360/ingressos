@@ -11,12 +11,13 @@ import { cn } from "@/lib/utils";
 /** Marca da área pública. Um componente só, para a home e o resto não divergirem. */
 export function PublicBrand() {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold">
+    // Sem link: a raiz está em branco, e o participante chega pelo link do evento.
+    <span className="flex shrink-0 items-center gap-2 font-semibold">
       <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <Ticket className="size-4" />
       </span>
       Ingressos
-    </Link>
+    </span>
   );
 }
 

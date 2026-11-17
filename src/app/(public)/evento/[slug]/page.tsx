@@ -1,17 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import {
-  ArrowLeft,
-  CalendarDays,
-  Clock,
-  ExternalLink,
-  Mail,
-  MapPin,
-  Phone,
-  User,
-} from "lucide-react";
+import { CalendarDays, Clock, ExternalLink, Mail, MapPin, Phone, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -151,21 +141,6 @@ export default async function EventLandingPage({ params }: PageProps) {
 
         <div className="relative mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-5">
-            {/*
-              Caminho de volta explícito, só no celular. No desktop o logo do
-              cabeçalho leva para a home e fica sempre à vista; no celular ele
-              divide a barra com pouco espaço e não se lê como botão de voltar.
-              Quem chegou por link direto — que é a maioria no celular — não
-              tem histórico para o "voltar" do navegador usar.
-            */}
-            <Link
-              href={ROUTES.home}
-              className="-mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:hidden"
-            >
-              <ArrowLeft className="size-4" />
-              Ver todos os eventos
-            </Link>
-
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge map={EVENT_STATUS} value={event.status} />
               {event.city && (
