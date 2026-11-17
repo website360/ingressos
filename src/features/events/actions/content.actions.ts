@@ -36,6 +36,15 @@ async function writeSections(
   sections: ContentSection[],
 ) {
   const { events } = await getRepositories();
+
+  // O conteúdo é público por `event_id`, e a RLS só confere o `tenant_id` da
+  // linha gravada — não a quem pertence o evento apontado. Sem esta checagem,
+  // uma conta de outra empresa conseguiria pendurar perguntas ou programação na
+  // landing de um evento alheio. A leitura já passa pela RLS (evento de outra
+  // empresa não é encontrado); a comparação explícita é a segunda trava.
+  const event = await events.findById(eventId);
+  if (event.tenant_id !== tenantId) throw AppError.forbidden();
+
   const base = { tenant_id: tenantId, event_id: eventId };
 
   if (sections.includes("schedule")) {
