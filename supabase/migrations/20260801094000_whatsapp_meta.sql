@@ -38,11 +38,11 @@ create unique index uq_whatsapp_meta_phone
 grant select (provider, meta_phone_number_id, meta_waba_id, meta_verify_token, meta_templates)
   on public.whatsapp_connections to authenticated;
 
-grant insert (
-  provider, meta_phone_number_id, meta_waba_id, meta_app_secret, meta_verify_token, meta_templates
-), update (
-  provider, meta_phone_number_id, meta_waba_id, meta_app_secret, meta_verify_token, meta_templates
-) on public.whatsapp_connections to authenticated;
+-- Sem GRANT de escrita para `authenticated` nestas colunas, de propósito.
+-- Quem grava é só `saveMetaConnection`, pelo service role, DEPOIS de conferir
+-- na Meta que o token da empresa enxerga aquele número. Se o painel pudesse
+-- gravar `meta_phone_number_id` direto, uma empresa poderia "reservar" o id do
+-- número de outra (o índice é único) e receber os eventos de webhook dela.
 
 -- Índice para o webhook de status achar a mensagem pelo id que a Meta devolveu.
 create index if not exists ix_whatsapp_messages_provider_id

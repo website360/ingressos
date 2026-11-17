@@ -147,6 +147,9 @@ export async function testMetaConnection(): Promise<Result<MetaProbe>> {
     const repo = adminRepo();
     const tenantId = session.activeTenantId!;
     const connection = await repo.findWithSecret(tenantId);
+    // Quem só lê confere, mas não muda a situação gravada — derrubar o estado
+    // para a fila parar é decisão de quem administra.
+    const canPersist = session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE);
 
     if (connection?.provider !== "meta" || !connection.meta_phone_number_id) {
       throw new AppError("NOT_FOUND", "A API oficial da Meta não está configurada.");
@@ -159,13 +162,15 @@ export async function testMetaConnection(): Promise<Result<MetaProbe>> {
         phoneNumberId: connection.meta_phone_number_id,
       }).phoneInfo();
 
-      await repo.update(tenantId, {
-        state: "conectado",
-        last_error: null,
-        last_connected_at: new Date().toISOString(),
-        server_version: info.verified_name,
-      });
-      revalidate();
+      if (canPersist) {
+        await repo.update(tenantId, {
+          state: "conectado",
+          last_error: null,
+          last_connected_at: new Date().toISOString(),
+          server_version: info.verified_name,
+        });
+        revalidate();
+      }
       return ok({
         phone: info.display_phone_number.replace(/\D/g, ""),
         verifiedName: info.verified_name,
@@ -174,8 +179,10 @@ export async function testMetaConnection(): Promise<Result<MetaProbe>> {
     } catch (error) {
       // Credencial recusada derruba o estado: a fila para de tentar em vez de
       // queimar as 5 tentativas de cada ingresso.
-      await repo.update(tenantId, { state: "desconectado", last_error: describe(error) });
-      revalidate();
+      if (canPersist) {
+        await repo.update(tenantId, { state: "desconectado", last_error: describe(error) });
+        revalidate();
+      }
       throw new AppError("VALIDATION", describe(error), { cause: error });
     }
   } catch (error) {
