@@ -172,7 +172,13 @@ pm2 logs ingressos-whatsapp                  # log JSON, telefone mascarado, sem
 curl -H "x-job-secret: $REVALIDATE_SECRET" http://127.0.0.1:3000/api/health/whatsapp
 ```
 
-- **Health check.** Responde 503 quando há fila e nenhum worker deu sinal de vida em 60 s, quando a mensagem mais antiga espera há mais de 15 min sem pausa de propósito, ou quando o banco não responde. Pausa feita no painel responde 200, com `paused: true`.
+- **Health check.** Responde 503 quando:
+  - há fila e nenhum worker deu sinal de vida em 60 s;
+  - a mensagem mais antiga pronta para sair espera há mais de 15 min, ou alguma está presa em `processando` há mais de 5 min;
+  - o próprio sistema pausou os envios por erro sistêmico (`systemPaused`), ou o breaker por taxa de erro está aberto;
+  - o banco não responde.
+
+  Uma pausa feita por uma pessoa no painel responde 200, com `paused: true`.
 - **Parada segura.** Ao receber SIGINT, o worker para de pegar mensagens, espera as que estão em voo (até 20 s) e sai (`kill_timeout` de 25 s no PM2).
 - **Quantas instâncias.** Uma basta: o servidor tem 1 vCPU, e a concorrência se ajusta na tela. Mais instâncias dividem o trabalho sem passar do limite, porque o limitador é global.
 - **Conexões com o banco.** O worker usa no máximo 4 conexões. Use a `DATABASE_URL` do pooler em **modo sessão** (porta 5432).
