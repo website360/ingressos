@@ -10,6 +10,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EVENT_STATUS } from "@/config/status-maps";
 import { ROUTES } from "@/constants/routes";
+import { DeleteEventButton } from "@/features/events/components/delete-event-button";
 import { PublicEventLink } from "@/features/events/components/public-event-link";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import type { EventStats } from "@/repositories";
@@ -38,7 +39,7 @@ function OccupancyBar({ taken, capacity }: { taken: number; capacity: number }) 
   );
 }
 
-export function EventsTable({ events }: { events: EventStats[] }) {
+export function EventsTable({ events, canDelete }: { events: EventStats[]; canDelete: boolean }) {
   const router = useRouter();
 
   const columns = React.useMemo<ColumnDef<EventStats, unknown>[]>(
@@ -127,8 +128,25 @@ export function EventsTable({ events }: { events: EventStats[] }) {
           <PublicEventLink slug={row.original.slug!} status={row.original.status} variant="icon" />
         ),
       },
+      ...(canDelete
+        ? [
+            {
+              id: "actions",
+              header: "",
+              enableSorting: false,
+              cell: ({ row }) => (
+                <DeleteEventButton
+                  variant="icon"
+                  eventId={row.original.event_id!}
+                  name={row.original.name ?? "evento"}
+                  registrations={row.original.seats_taken ?? 0}
+                />
+              ),
+            } satisfies ColumnDef<EventStats, unknown>,
+          ]
+        : []),
     ],
-    [],
+    [canDelete],
   );
 
   return (

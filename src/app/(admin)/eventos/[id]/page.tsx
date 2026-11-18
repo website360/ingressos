@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EVENT_STATUS } from "@/config/status-maps";
 import { ROUTES } from "@/constants/routes";
 import { EventContentForm } from "@/features/events/components/event-content-form";
+import { DeleteEventButton } from "@/features/events/components/delete-event-button";
 import { EventForm } from "@/features/events/components/event-form";
 import { PublicEventLink } from "@/features/events/components/public-event-link";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -31,7 +32,7 @@ import { getRepositories } from "@/repositories";
 export const metadata: Metadata = { title: "Evento" };
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission(PERMISSIONS.EVENT_READ);
+  const session = await requirePermission(PERMISSIONS.EVENT_READ);
   const { id } = await params;
 
   const { events, registrations } = await getRepositories();
@@ -66,6 +67,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   <ExternalLink /> Página pública
                 </Link>
               </Button>
+            )}
+            {session.permissions.includes(PERMISSIONS.EVENT_DELETE) && (
+              <DeleteEventButton
+                eventId={event.id}
+                name={event.name}
+                registrations={event.seats_taken ?? 0}
+              />
             )}
           </>
         }

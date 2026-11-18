@@ -8,6 +8,7 @@ import { ROUTES } from "@/constants/routes";
 import { AppError, fail, ok, type Result } from "@/lib/errors";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getRepositories } from "@/repositories";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 
@@ -118,11 +119,36 @@ export async function updateEvent(id: string, input: EventInput): Promise<Result
 
 export async function archiveEvent(id: string): Promise<Result<{ id: string }>> {
   try {
-    await requirePermission(PERMISSIONS.EVENT_DELETE);
+    const session = await requirePermission(PERMISSIONS.EVENT_DELETE);
     const { events } = await getRepositories();
-    await events.archive(id);
+    // Leitura com o client do usuário: a RLS já garante que o evento é da
+    // empresa dele; a comparação abaixo é a segunda trava.
+    const event = await events.findById(id);
+    if (event.tenant_id !== session.activeTenantId) throw AppError.forbidden();
+
+    // "Excluir" no painel. RN-10: o evento nunca é apagado de verdade — as
+    // inscrições e check-ins continuam nos relatórios. Some da lista e da
+    // página pública, e o endereço fica livre para um evento novo.
+    //
+    // A gravação vai pelo service role porque a policy de SELECT de `events`
+    // esconde `deleted_at` preenchido, e o Postgres recusa um UPDATE cuja
+    // linha nova o próprio usuário deixaria de enxergar (42501). Permissão e
+    // empresa já foram conferidas acima.
+    const { error } = await createAdminClient()
+      .from("events")
+      .update({
+        deleted_at: new Date().toISOString(),
+        status: "encerrado",
+        slug: `${event.slug}-excluido-${Date.now().toString(36)}`,
+      })
+      .eq("id", id)
+      .eq("tenant_id", event.tenant_id)
+      .is("deleted_at", null);
+    if (error) throw error;
 
     revalidatePath(ROUTES.admin.events);
+    revalidatePath(ROUTES.admin.dashboard);
+    revalidatePath(ROUTES.public.event(event.slug));
     return ok({ id });
   } catch (error) {
     return fail(error);

@@ -76,7 +76,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
         />
       </Suspense>
 
-      <EventsTable events={items} />
+      <EventsTable
+        events={items}
+        canDelete={session.permissions.includes(PERMISSIONS.EVENT_DELETE)}
+      />
 
       {total > PAGE_SIZE && (
         <Pagination page={page} total={total} pageSize={PAGE_SIZE} params={params} />

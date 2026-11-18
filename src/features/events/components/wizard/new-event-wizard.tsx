@@ -21,6 +21,7 @@ import { Form } from "@/components/ui/form";
 import { ROUTES } from "@/constants/routes";
 import { saveEventContentSection } from "@/features/events/actions/content.actions";
 import { createEvent, updateEvent } from "@/features/events/actions/event.actions";
+import { toastActionFailure } from "@/lib/action-failure";
 import {
   DocumentsSection,
   ScheduleSection,
@@ -178,8 +179,23 @@ function WizardBody({
     setFaqErrors({});
   }
 
-  /** Grava a etapa atual. `true` quando pode seguir. */
+  /**
+   * Grava a etapa atual. `true` quando pode seguir.
+   *
+   * Erro LANÇADO (não o `Result` de falha) é de transporte: rede caiu ou o
+   * sistema foi atualizado com a aba aberta e a ação antiga sumiu do servidor.
+   * Sem este catch ele sobe para o boundary e derruba o modal inteiro.
+   */
   async function saveCurrent(): Promise<boolean> {
+    try {
+      return await saveStep();
+    } catch (error) {
+      toastActionFailure(error);
+      return false;
+    }
+  }
+
+  async function saveStep(): Promise<boolean> {
     if (step.kind === "event" || step.kind === "review") {
       // Na etapa 1 sem evento ainda, salvar é criar — mesmo sem nada "sujo".
       if (eventId && !eventForm.formState.isDirty) return true;
@@ -307,7 +323,13 @@ function WizardBody({
         ...eventForm.getValues(),
         status: publish ? ("publicado" as const) : ("rascunho" as const),
       };
-      const result = await updateEvent(eventId!, values);
+      let result: Awaited<ReturnType<typeof updateEvent>>;
+      try {
+        result = await updateEvent(eventId!, values);
+      } catch (error) {
+        toastActionFailure(error);
+        return;
+      }
       if (!result.ok) {
         toast.error(result.error.message);
         return;

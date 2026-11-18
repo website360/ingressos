@@ -81,14 +81,7 @@ export class EventRepository extends BaseRepository {
     );
   }
 
-  /** RN-10: evento com inscrições nunca é apagado, apenas arquivado. */
-  async archive(id: string): Promise<void> {
-    const { error } = await this.client
-      .from("events")
-      .update({ deleted_at: new Date().toISOString(), status: "encerrado" })
-      .eq("id", id);
-    if (error) throw error;
-  }
+
 
   // ---------------------------------------------------------------------------
   // Conteúdo da landing
