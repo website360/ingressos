@@ -235,3 +235,27 @@ export async function runSqlFile(db: pg.Pool, path: string): Promise<void> {
   const { readFileSync } = await import("node:fs");
   await db.query(readFileSync(path, "utf8"));
 }
+
+/**
+ * As migrations deste trabalho que têm reversão, em ordem de aplicação.
+ * Reverter é na ordem inversa — as posteriores dependem das anteriores.
+ */
+export async function reversibleMigrations(): Promise<{ up: string; down: string }[]> {
+  const { readdirSync, existsSync } = await import("node:fs");
+  return readdirSync("supabase/migrations")
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .map((f) => ({
+      up: `supabase/migrations/${f}`,
+      down: `supabase/rollbacks/${f.replace(/\.sql$/, ".down.sql")}`,
+    }))
+    .filter((m) => existsSync(m.down));
+}
+
+export async function rollbackAll(db: pg.Pool): Promise<void> {
+  for (const m of (await reversibleMigrations()).reverse()) await runSqlFile(db, m.down);
+}
+
+export async function reapplyAll(db: pg.Pool): Promise<void> {
+  for (const m of await reversibleMigrations()) await runSqlFile(db, m.up);
+}

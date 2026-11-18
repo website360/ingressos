@@ -5,11 +5,10 @@ import {
   createTestEvent,
   getTestPool,
   resetWhatsappTables,
-  runSqlFile,
+  reapplyAll,
+  rollbackAll,
 } from "../support/db";
 
-const UP = "supabase/migrations/20260801094100_whatsapp_escala_schema.sql";
-const DOWN = "supabase/rollbacks/20260801094100_whatsapp_escala_schema.down.sql";
 
 const db = getTestPool();
 let tenantId = "";
@@ -109,11 +108,11 @@ describe("esquema do WhatsApp em escala", () => {
     });
   });
 
-  it("a reversão desfaz e a migration reaplica sem erro", async () => {
-    await runSqlFile(db, DOWN);
+  it("as reversões desfazem tudo e as migrations reaplicam sem erro", async () => {
+    await rollbackAll(db);
     const gone = await db.query(`select to_regclass('public.whatsapp_notifications') as t`);
     expect(gone.rows[0].t).toBeNull();
-    await runSqlFile(db, UP);
+    await reapplyAll(db);
     const back = await db.query(`select to_regclass('public.whatsapp_notifications') as t`);
     expect(back.rows[0].t).toBe("whatsapp_notifications");
   });
