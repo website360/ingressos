@@ -116,6 +116,21 @@ describe("health check do WhatsApp", () => {
     expect(await res.json()).toMatchObject({ ok: false, stalled: true });
   });
 
+  it("presa em 'processando' alarma mesmo com pausa de pessoa", async () => {
+    await db.query(
+      `insert into public.whatsapp_notifications
+         (tenant_id, event_id, kind, phone_e164, dedupe_key, status, locked_at)
+       values ($1, $2, 'registration_confirmed', '+5511987654321', 'h-6', 'processando', now() - interval '6 minutes')`,
+      [tenantId, eventId],
+    );
+    await db.query(`select public.whatsapp_heartbeat('w-health', '{}')`);
+    await db.query(`update public.whatsapp_connections set paused = true where tenant_id = $1`, [tenantId]);
+    const res = await call("segredo-de-teste-do-cron");
+    await db.query(`update public.whatsapp_connections set paused = false where tenant_id = $1`, [tenantId]);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ ok: false, stuckProcessing: true });
+  });
+
   it("fila vazia sem worker: 200 (nada parado)", async () => {
     const res = await call("segredo-de-teste-do-cron");
     expect(res.status).toBe(200);

@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
   const oldestQueuedSeconds = oldest.data?.queued_at
     ? Math.round((Date.now() - new Date(oldest.data.queued_at).getTime()) / 1000)
     : null;
+  // Empresa única (uq_single_company) e uma conexão por empresa: no máximo
+  // uma linha — a lista não tem como vir truncada.
   const rows = connections.data ?? [];
   // Pausa de pessoa: pausada e NÃO pelo breaker manual do sistema.
   const pausedByPerson = rows.length > 0 && rows.every((c) => c.paused && !c.breaker_manual);
@@ -93,9 +95,9 @@ export async function GET(request: NextRequest) {
   );
 
   const noWorker = queueSize > 0 && workerCount === 0;
-  const stalled =
-    !pausedByPerson &&
-    ((oldestQueuedSeconds ?? 0) > STALLED_AFTER_S || (stuck.count ?? 0) > 0);
+  // Presa em "processando" é a reconciliação parada — alarma mesmo com pausa.
+  const stuckProcessing = (stuck.count ?? 0) > 0;
+  const stalled = (!pausedByPerson && (oldestQueuedSeconds ?? 0) > STALLED_AFTER_S) || stuckProcessing;
   const ok = !noWorker && !stalled && !systemPaused && !breakerOpen;
 
   return NextResponse.json(
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
       systemPaused,
       breakerOpen,
       stalled,
+      stuckProcessing,
     },
     { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
