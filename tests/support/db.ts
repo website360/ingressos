@@ -61,20 +61,13 @@ export async function resetWhatsappTables(db: pg.Pool): Promise<void> {
   );
   const tables = rows.map((r) => `public.${r.name}`);
   if (tables.length) await db.query(`truncate ${tables.join(", ")} cascade`);
-  for (const table of [
-    "outbox_jobs",
-    "whatsapp_messages",
-    "email_messages",
-    "consents",
-    "checkins",
-    "cancellations",
-    "tickets",
-    "registrations",
-    "attendees",
-    "events",
-  ]) {
-    await db.query(`delete from public.${table}`);
-  }
+  // TRUNCATE (banco local de teste): depois de um teste de carga há centenas
+  // de milhares de linhas, e DELETE linha a linha com gatilhos estoura o tempo.
+  await db.query(
+    `truncate public.outbox_jobs, public.whatsapp_messages, public.email_messages,
+              public.consents, public.checkins, public.cancellations, public.tickets,
+              public.registrations, public.attendees, public.events cascade`,
+  );
 }
 
 export const TEST_TENANT_ID = "11111111-1111-1111-1111-111111111111";
