@@ -20,6 +20,7 @@ import {
 import { CompanyForm } from "@/features/settings/components/company-form";
 import { FaqTemplatesForm } from "@/features/settings/components/faq-templates-form";
 import { WhatsappProviderSettings } from "@/features/whatsapp/components/whatsapp-provider-settings";
+import { WhatsappCapacityForm } from "@/features/whatsapp/components/capacity-form";
 import { WhatsappPacingForm } from "@/features/whatsapp/components/pacing-form";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireAnyPermission } from "@/lib/auth/session";
@@ -232,12 +233,22 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
           />
 
-          {connection && (
-            <WhatsappPacingForm
-              intervalSeconds={connection.send_interval_seconds}
-              dailyLimit={connection.daily_send_limit}
+          {connection?.provider === "meta" ? (
+            <WhatsappCapacityForm
+              ratePerSecond={connection.rate_per_second}
+              dailyUniqueLimit={connection.daily_unique_limit}
+              workerConcurrency={connection.worker_concurrency}
+              messagingTier={connection.messaging_tier}
               canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
             />
+          ) : (
+            connection && (
+              <WhatsappPacingForm
+                intervalSeconds={connection.send_interval_seconds}
+                dailyLimit={connection.daily_send_limit}
+                canEdit={session.permissions.includes(PERMISSIONS.SETTINGS_MANAGE)}
+              />
+            )
           )}
 
           <Card>

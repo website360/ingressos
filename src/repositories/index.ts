@@ -8,6 +8,7 @@ import { MessageRepository } from "./message.repository";
 import { OperationsRepository } from "./operations.repository";
 import { RegistrationRepository } from "./registration.repository";
 import { TenantRepository } from "./tenant.repository";
+import { WhatsappQueueRepository } from "./whatsapp-queue.repository";
 import { WhatsappRepository } from "./whatsapp.repository";
 
 export type { EventStats, Event, Category, FaqTemplate } from "./event.repository";
@@ -34,5 +35,6 @@ export async function getRepositories() {
     tenant: new TenantRepository(client),
     whatsapp: new WhatsappRepository(client),
     messages: new MessageRepository(client),
+    whatsappQueue: new WhatsappQueueRepository(client),
   };
 }

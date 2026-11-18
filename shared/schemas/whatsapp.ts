@@ -53,6 +53,37 @@ export const whatsappPacingSchema = z.object({
 export type WhatsappPacingInput = z.infer<typeof whatsappPacingSchema>;
 
 /**
+ * Capacidade do número na API oficial (Meta). Espelha os CHECK de
+ * `whatsapp_connections` (20260801094100).
+ *
+ * - vazão: mensagens por segundo, para o número inteiro (todos os workers);
+ *   a Meta permite 80/s por padrão e até 1000/s com aprovação.
+ * - teto: destinatários ÚNICOS em 24 h — o nível de limite da conta
+ *   (1 mil, 10 mil, 100 mil...). Configurar acima do nível real não acelera
+ *   nada: a Meta recusa e a qualidade do número cai.
+ * - concorrência: requisições em voo ao mesmo tempo, por worker.
+ */
+export const whatsappCapacitySchema = z.object({
+  rate_per_second: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "A vazão mínima é 1 mensagem por segundo.")
+    .max(1000, "A Meta não passa de 1000 mensagens por segundo por número."),
+  daily_unique_limit: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "O teto precisa ser ao menos 1.")
+    .max(10_000_000, "Teto alto demais."),
+  worker_concurrency: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "Ao menos 1 envio por vez.")
+    .max(256, "No máximo 256 envios simultâneos."),
+});
+
+export type WhatsappCapacityInput = z.infer<typeof whatsappCapacitySchema>;
+
+/**
  * Credenciais da API oficial (Meta Cloud API).
  *
  * Token e segredo do app seguem a regra da chave da Evolution: vazio mantém o

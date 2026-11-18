@@ -38,6 +38,13 @@ const VISIBLE = [
   "meta_waba_id",
   "meta_verify_token",
   "meta_templates",
+  "rate_per_second",
+  "daily_unique_limit",
+  "worker_concurrency",
+  "paused",
+  "paused_reason",
+  "quality_rating",
+  "messaging_tier",
 ].join(", ");
 
 export class WhatsappRepository extends BaseRepository {
