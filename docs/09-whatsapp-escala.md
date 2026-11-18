@@ -245,3 +245,49 @@ npm run test:int                   # integração: banco local + Meta simulada
 ```
 
 Nenhum teste fala com a Meta de verdade nem com o banco de produção: o harness recusa qualquer host que não seja localhost.
+
+## 12. Resultados de carga (18/11/2026)
+
+Ferramenta e método: `scripts/load/README.md`. Dados completos: `scripts/load/results/`.
+
+**Ambiente.** Uma máquina de desenvolvimento (Intel Core Ultra 9 285K, 24 núcleos lógicos, 32 GB; Docker com 24 CPUs e 16 GB) rodando ao mesmo tempo:
+
+- o Postgres do Supabase local;
+- o worker real (`dist/worker.js`, processo separado);
+- o gerador de carga;
+- a Meta simulada.
+
+**Parâmetros:**
+
+- **Meta simulada:** vazão de 80 msg/s (o padrão da Meta), latência de 75 a 225 ms e **1% de respostas 500**, que viram nova tentativa.
+- **Worker:** 32 envios simultâneos.
+- **Gerador:** 16 conexões injetando inscrições.
+
+| Perfil | Inscrições | Ritmo pedido / obtido | Latência da inscrição p50 / p95 / p99 | Aceitas pela Meta | Duplicadas | Pico da fila | Esvaziou após a última inscrição | Worker (pico) | Conexões no Postgres (pico) |
+| ------ | ---------- | --------------------- | ------------------------------------- | ----------------- | ---------- | ------------ | ------------------------------- | ------------- | --------------------------- |
+| 100 mil em 15 min | 100.000 (0 erros) | 111,1 / 111,1 por s | 3,5 / 7,2 / 59,9 ms | 100.000 | 0 | 28.963 | 535 s | 175 MB, 34% de CPU | 31 |
+| ritmo de 100 mil/1 h (janela de 10 min) | 16.667 (0 erros) | 27,8 / 27,8 por s | 4,0 / 6,3 / 72,9 ms | 16.667 | 0 | 33 | 78 s ¹ | 168 MB, 15% | 31 |
+| ritmo de 100 mil/3 h (janela de 10 min) | 5.556 (0 erros) | 9,3 / 9,3 por s | 4,2 / 5,4 / 28,9 ms | 5.556 | 0 | 15 | 67 s ¹ | 168 MB, 8% | 25 |
+
+¹ O que sobra depois da última inscrição é só o 1% de erros simulados esperando a nova tentativa (backoff a partir de 60 s). O resto sai em tempo real.
+
+### O que os números mostram
+
+- **A inscrição não espera o WhatsApp.**
+  - No pico de 15 min, entraram 111 inscrições por segundo durante os 15 minutos inteiros, com p95 de 7 ms. Enquanto isso a fila chegou a 29 mil mensagens.
+  - A fila cresce porque entram 111 por segundo e a Meta aceita 80. Ela esvaziou cerca de 9 minutos depois da última inscrição: 100 mil confirmações em 24 minutos no total.
+  - O pior caso de latência foi 3 s, uma vez, por disputa no `FOR UPDATE` do evento.
+- **A vazão respeitou o limite global.**
+  - Média de 70 msg/s, incluindo a espera dos reenvios.
+  - Pico de 93 msg/s numa janela de 5 s. É o teto previsto: a vazão mais a capacidade do bucket (1 s de vazão) acumulada num momento ocioso.
+  - Os 1.035 erros simulados (1%) foram reenviados e todos saíram.
+- **Idempotência.** Zero mensagens duplicadas, e cada inscrição recebeu exatamente uma confirmação aceita.
+- **Recursos.** O worker usou até 175 MB de memória e 34% de um núcleo. No Postgres foram até 31 conexões no total: o worker usa no máximo 4, e o resto é o gerador de carga.
+
+### O que NÃO está provado
+
+- **Desempenho em produção.** O servidor de produção tem 1 vCPU e 2 GB, e o Supabase hospedado tem limite de 60 conexões e latência de rede. Os números acima são de uma máquina local muito mais forte. Antes de um evento grande, vale repetir em homologação.
+- **O `FOR UPDATE` no evento.** Ele serializa as inscrições de um mesmo evento e é o primeiro teto de inscrições por segundo. Localmente aguentou 111/s com folga. No Supabase hospedado, cada transação paga a latência de rede.
+- **A entrega real.** Depende da Meta: nível de limite da conta, vazão aprovada, qualidade do número e aprovação do modelo. **No nível de 1 mil destinatários por dia, 100 mil confirmações levam 100 dias**, e nenhum código muda isso.
+- **A borda.** Navegador, nginx e Next não entraram no teste: a inscrição foi chamada direto pela RPC.
+- **Perfis longos.** Os perfis de 1 h e 3 h rodaram numa janela de 10 minutos no mesmo ritmo, não nas horas inteiras.
