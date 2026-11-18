@@ -29,6 +29,9 @@ export const registrationSchema = z.object({
   accept_rules: z.literal(true, {
     errorMap: () => ({ message: "É necessário aceitar o regulamento." }),
   }),
+  // Opt-in do WhatsApp: OPCIONAL (consentimento livre — dá para se inscrever
+  // sem ele) e ausente quando a caixa nem foi oferecida.
+  accept_whatsapp: z.boolean().optional(),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;

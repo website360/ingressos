@@ -10,6 +10,7 @@ import {
 } from "@shared/schemas/registration";
 import { splitFullName } from "@shared/validation/name";
 
+import { registrationConsents } from "@/features/registrations/lib/consents";
 import { getRequestContext } from "@/lib/auth/request-context";
 import { AppError, fail, mapPostgrestError, ok, type Result } from "@/lib/errors";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -49,10 +50,7 @@ export async function submitRegistration(
         city: data.city,
         state: data.state,
       },
-      p_consents: [
-        { type: "lgpd", version: 1, accepted: data.accept_lgpd },
-        { type: "regulamento", version: 1, accepted: data.accept_rules },
-      ],
+      p_consents: registrationConsents(data) as never,
       p_context: {
         source: "landing",
         ip: context.ip,

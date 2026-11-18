@@ -11,6 +11,7 @@ import { AlertTriangle, LocateFixed, Loader2, Navigation, ShieldCheck } from "lu
 import { registrationSchema, type RegistrationInput } from "@shared/schemas/registration";
 import { formatCpf } from "@shared/validation/cpf";
 import { BR_STATES, formatBrPhone, isValidBrState } from "@shared/validation/phone";
+import { WHATSAPP_CONSENT_TEXT } from "@shared/whatsapp/consent";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -42,9 +43,17 @@ interface Props {
   eventSlug: string;
   eventName: string;
   isFull: boolean;
+  /** Oferece a caixa "receber pelo WhatsApp" (só com a API oficial ligada). */
+  whatsappOptIn?: boolean;
 }
 
-export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Props) {
+export function RegistrationForm({
+  eventId,
+  eventSlug,
+  eventName,
+  isFull,
+  whatsappOptIn = false,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
 
@@ -58,6 +67,9 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
       city: "",
       accept_lgpd: false,
       accept_rules: false,
+      // Desmarcada: consentimento só vale se a pessoa marcar. Sem WhatsApp
+      // ligado, o campo nem existe — nada é registrado.
+      accept_whatsapp: whatsappOptIn ? false : undefined,
     } as never,
   });
 
@@ -235,6 +247,33 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
               <ShieldCheck className="size-4 text-primary" />
               Consentimentos
             </p>
+
+            {whatsappOptIn && (
+              <FormField
+                control={form.control}
+                name="accept_whatsapp"
+                render={({ field }) => (
+                  <FormItem className="flex items-start gap-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value === true}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                        className="mt-0.5"
+                      />
+                    </FormControl>
+                    <div className="space-y-1">
+                      <FormLabel className="font-normal leading-snug">
+                        {WHATSAPP_CONSENT_TEXT}
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Opcional. Só a confirmação desta inscrição — nada de propaganda. Para
+                        parar, responda SAIR.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/*
               Um único aceite na tela, mas os dois consentimentos (LGPD e

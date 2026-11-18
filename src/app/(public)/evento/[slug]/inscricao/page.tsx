@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, MapPin } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { RegistrationForm } from "@/features/registrations/components/registration-form";
 import { formatDateTime } from "@/lib/format";
+import { isWhatsappOptInEnabled } from "@/lib/whatsapp-optin";
 import { publicRepository } from "@/repositories/public.repository";
 
 export const metadata: Metadata = {
@@ -22,7 +23,11 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
 
   if (!event || event.status !== "publicado") notFound();
 
-  const availability = await publicRepository.availability(event.id);
+  const [availability, whatsappOptIn] = await Promise.all([
+    publicRepository.availability(event.id),
+    // Sem conseguir saber, não oferece: melhor não prometer o WhatsApp.
+    isWhatsappOptInEnabled().catch(() => false),
+  ]);
   const isFull = (availability?.seats_available ?? 0) <= 0;
 
   return (
@@ -61,6 +66,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
         eventSlug={event.slug}
         eventName={event.name}
         isFull={isFull}
+        whatsappOptIn={whatsappOptIn}
       />
     </div>
   );
