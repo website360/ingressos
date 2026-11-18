@@ -26,6 +26,9 @@ async function main() {
     databaseUrl,
     appUrl,
     workerId: process.env.WORKER_ID,
+    // Só para homologação/carga contra um simulador da Graph API. Em produção
+    // fica vazio e vale META_GRAPH_VERSION.
+    metaBaseUrl: process.env.META_BASE_URL || undefined,
     reprocessWebhooks: reprocessPendingWebhooks,
   });
 

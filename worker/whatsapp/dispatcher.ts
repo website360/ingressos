@@ -227,9 +227,15 @@ export async function startWorker(opts: WorkerOptions): Promise<RunningWorker> {
     const now = Date.now();
     if (now - lastHeartbeat >= heartbeatEveryMs) {
       lastHeartbeat = now;
+      const cpu = process.cpuUsage();
       await db.query(`select public.whatsapp_heartbeat($1, $2)`, [
         id,
-        JSON.stringify({ ...stats, emVoo: pending.size }),
+        JSON.stringify({
+          ...stats,
+          emVoo: pending.size,
+          rssMb: Math.round(process.memoryUsage().rss / 1_048_576),
+          cpuMs: Math.round((cpu.user + cpu.system) / 1000),
+        }),
       ]);
     }
     if (now - lastReconcile >= reconcileEveryMs) {

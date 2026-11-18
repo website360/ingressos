@@ -314,7 +314,7 @@ describe("worker do WhatsApp", () => {
     expect(await counts()).toEqual({ aceita: 40 });
   });
 
-  it("grava batimento", async () => {
+  it("grava batimento com memória e CPU do processo", async () => {
     await start(undefined, { workerId: "w-batimento" });
     await until(async () => {
       const { rows } = await db.query(
@@ -322,5 +322,10 @@ describe("worker do WhatsApp", () => {
       );
       return rows[0].n === 1;
     });
+    const { rows } = await db.query(
+      `select stats from public.whatsapp_worker_heartbeats where worker_id = 'w-batimento'`,
+    );
+    expect(rows[0].stats.rssMb).toBeGreaterThan(0);
+    expect(rows[0].stats.cpuMs).toBeGreaterThanOrEqual(0);
   });
 });
