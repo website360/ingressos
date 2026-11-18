@@ -62,6 +62,33 @@ describe("health check do WhatsApp", () => {
     const raw = await res.text();
     expect(raw).not.toContain("5511");
     expect(JSON.parse(raw)).toMatchObject({ ok: true, workers: 1, queue: 1, paused: false });
+    expect(JSON.parse(raw)).not.toHaveProperty("pausedReason");
+  });
+
+  it("worker vivo mas fila parada há mais de 15 min (sem pausa): 503", async () => {
+    await db.query(
+      `insert into public.whatsapp_notifications (tenant_id, event_id, kind, phone_e164, dedupe_key, queued_at)
+       values ($1, $2, 'registration_confirmed', '+5511987654321', 'h-3', now() - interval '20 minutes')`,
+      [tenantId, eventId],
+    );
+    await db.query(`select public.whatsapp_heartbeat('w-health', '{}')`);
+    const res = await call("segredo-de-teste-do-cron");
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ ok: false, stalled: true });
+  });
+
+  it("fila parada mas pausada de propósito: 200, com paused", async () => {
+    await db.query(
+      `insert into public.whatsapp_notifications (tenant_id, event_id, kind, phone_e164, dedupe_key, queued_at)
+       values ($1, $2, 'registration_confirmed', '+5511987654321', 'h-4', now() - interval '20 minutes')`,
+      [tenantId, eventId],
+    );
+    await db.query(`select public.whatsapp_heartbeat('w-health', '{}')`);
+    await db.query(`update public.whatsapp_connections set paused = true where tenant_id = $1`, [tenantId]);
+    const res = await call("segredo-de-teste-do-cron");
+    await db.query(`update public.whatsapp_connections set paused = false where tenant_id = $1`, [tenantId]);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, paused: true });
   });
 
   it("fila vazia sem worker: 200 (nada parado)", async () => {
