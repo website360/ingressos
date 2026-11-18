@@ -74,6 +74,16 @@ alguém chamando — no `crontab -e` do usuário `ingressos`:
 O endpoint escreve com a service role e é protegido pelo segredo compartilhado
 `REVALIDATE_SECRET`; sem o cabeçalho, responde 401.
 
+## 5. Worker do WhatsApp (API oficial da Meta)
+
+O envio do WhatsApp pela Meta é um processo à parte do site
+(`ingressos-whatsapp` no `ecosystem.config.js`), construído pelo próprio
+`scripts/deploy.sh` (`npm run worker:build`) e iniciado por
+`pm2 startOrReload`. Antes do primeiro deploy, aplique as migrations
+094100–094400 e configure no `.env.local` a `DATABASE_SSL_CA` (ou, assumindo o
+risco, `DATABASE_SSL_INSECURE=1`) — sem isso o worker não sobe. Passo a passo,
+checklist e rollback: `docs/09-whatsapp-escala.md`.
+
 ## Deploys seguintes
 
 ```bash
