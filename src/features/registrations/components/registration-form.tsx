@@ -236,50 +236,47 @@ export function RegistrationForm({ eventId, eventSlug, eventName, isFull }: Prop
               Consentimentos
             </p>
 
+            {/*
+              Um único aceite na tela, mas os dois consentimentos (LGPD e
+              regulamento) continuam sendo enviados e gravados separadamente.
+            */}
             <FormField
               control={form.control}
               name="accept_lgpd"
-              render={({ field }) => (
-                <FormItem className="flex items-start gap-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      className="mt-0.5"
-                    />
-                  </FormControl>
-                  <div className="space-y-1">
-                    <FormLabel className="font-normal leading-snug">
-                      Autorizo o tratamento dos meus dados pessoais para a gestão da minha
-                      participação neste evento, conforme a LGPD.
-                    </FormLabel>
-                    <FormMessage />
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="accept_rules"
-              render={({ field }) => (
-                <FormItem className="flex items-start gap-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      className="mt-0.5"
-                    />
-                  </FormControl>
-                  <div className="space-y-1">
-                    <FormLabel className="font-normal leading-snug">
-                      Li e aceito o regulamento e a política de cancelamento do evento
-                      <span className="font-medium"> {eventName}</span>.
-                    </FormLabel>
-                    <FormMessage />
-                  </div>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const hasError =
+                  !!form.formState.errors.accept_lgpd || !!form.formState.errors.accept_rules;
+                return (
+                  <FormItem className="flex items-start gap-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          const value = checked === true;
+                          field.onChange(value);
+                          form.setValue("accept_rules", value as never, {
+                            shouldValidate: form.formState.isSubmitted,
+                          });
+                        }}
+                        className="mt-0.5"
+                      />
+                    </FormControl>
+                    <div className="space-y-1">
+                      <FormLabel className="font-normal leading-snug">
+                        Li e aceito o regulamento e a política de cancelamento do evento
+                        <span className="font-medium"> {eventName}</span> e autorizo o tratamento
+                        dos meus dados pessoais para a gestão da minha participação, conforme a
+                        LGPD.
+                      </FormLabel>
+                      {hasError && (
+                        <p className="text-sm font-medium text-destructive">
+                          É necessário aceitar os termos para se inscrever.
+                        </p>
+                      )}
+                    </div>
+                  </FormItem>
+                );
+              }}
             />
           </CardContent>
         </Card>
