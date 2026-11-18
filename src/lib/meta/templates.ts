@@ -132,7 +132,7 @@ export function buildMetaTemplate(
 }
 
 export interface MetaTemplateGuideItem {
-  key: "confirmed" | "cancelled" | "code";
+  key: "confirmed" | "confirmed_v2" | "cancelled" | "code";
   title: string;
   name: string;
   category: string;
@@ -169,6 +169,24 @@ export function metaTemplateGuide(
       ].join("\n"),
       variables:
         "{{1}} nome · {{2}} evento · {{3}} data e hora · {{4}} local · {{5}} nº da inscrição",
+      button: `Botão de URL “Ver ingresso”, tipo dinâmico: ${appUrl}/ingresso/{{1}}`,
+    },
+    {
+      key: "confirmed_v2",
+      title: "Confirmação com o ingresso — versão 2 (para envio em escala)",
+      name: "confirmacao_inscricao",
+      category: "Utilidade",
+      header:
+        "Imagem. O QR Code do ingresso é enviado por link a cada mensagem — na análise, use uma imagem de QR qualquer como exemplo.",
+      body: [
+        "Olá, {{1}}! Sua inscrição em *{{2}}* está confirmada.",
+        "",
+        "📅 {{3}} às {{4}}",
+        "📍 {{5}}",
+        "",
+        "Apresente o QR Code acima na entrada. Se preferir, abra o ingresso pelo botão abaixo.",
+      ].join("\n"),
+      variables: "{{1}} nome · {{2}} evento · {{3}} data · {{4}} horário · {{5}} local",
       button: `Botão de URL “Ver ingresso”, tipo dinâmico: ${appUrl}/ingresso/{{1}}`,
     },
     {

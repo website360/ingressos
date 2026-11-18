@@ -120,3 +120,16 @@ describe("webhook da Meta", () => {
     expect(shouldReplaceStatus("entregue", "falhou")).toBe(true);
   });
 });
+
+describe("guia de modelos — v2 da confirmação", () => {
+  it("inclui o modelo novo, Utilidade, com QR por link e data/horário separados", async () => {
+    const { metaTemplateGuide, META_TEMPLATE_DEFAULTS: defaults } = await import("@/lib/meta/templates");
+    const guide = metaTemplateGuide(defaults, "https://ingressos.example");
+    const v2 = guide.find((g) => g.key === "confirmed_v2");
+    expect(v2).toMatchObject({ name: "confirmacao_inscricao", category: "Utilidade" });
+    expect(v2?.variables).toContain("{{3}} data");
+    expect(v2?.variables).toContain("{{4}} horário");
+    expect(v2?.button).toContain("https://ingressos.example/ingresso/{{1}}");
+    expect(v2?.body).not.toMatch(/promo|desconto|outros eventos/i);
+  });
+});
