@@ -121,6 +121,24 @@ export async function POST(request: NextRequest) {
 
   for (const job of whatsappJobs) {
     const connection = job.tenant_id ? await loadConnection(job.tenant_id) : null;
+
+    // Com a API oficial, o WhatsApp sai pela fila nova (worker dedicado). Um
+    // job antigo que sobrou aqui é encerrado sem envio — mandar pelos dois
+    // caminhos seria a mesma confirmação duas vezes.
+    if (connection?.provider === "meta") {
+      await admin
+        .from("outbox_jobs")
+        .update({
+          status: "falhou",
+          locked_at: null,
+          last_error:
+            "Encerrado sem envio: com a API oficial da Meta, o WhatsApp sai pela fila nova (aba Fila do WhatsApp).",
+        })
+        .eq("id", job.id);
+      outcome.failed++;
+      continue;
+    }
+
     const intervalMs = (connection?.send_interval_seconds ?? 20) * 1000;
     const waitMs = lastSentAt === 0 ? 0 : Math.max(0, intervalMs - (Date.now() - lastSentAt));
 

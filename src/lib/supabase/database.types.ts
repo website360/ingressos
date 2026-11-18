@@ -1429,6 +1429,10 @@ export type Database = {
         };
         Returns: number;
       };
+      whatsapp_ingest_webhook: {
+        Args: { p_phone_number_id: string | null; p_payload: Json };
+        Returns: Json;
+      };
       whatsapp_optout_set: { Args: { p_phone: string; p_optout: boolean }; Returns: undefined };
       whatsapp_update_capacity: {
         Args: { p_rate: number; p_daily: number; p_concurrency: number };

@@ -282,6 +282,13 @@ revoke all on public.whatsapp_optouts           from anon, authenticated;
 revoke all on public.whatsapp_rate_buckets      from anon, authenticated;
 revoke all on public.whatsapp_worker_heartbeats from anon, authenticated;
 
+-- O servidor (rotas do Next e worker) usa o service role. Explícito, sem
+-- depender do privilégio padrão do projeto — a CLI atual não o concede mais.
+grant select, insert, update, delete on
+  public.whatsapp_templates, public.whatsapp_notifications, public.whatsapp_webhook_events,
+  public.whatsapp_optouts, public.whatsapp_rate_buckets, public.whatsapp_worker_heartbeats
+  to service_role;
+
 grant select on public.whatsapp_templates         to authenticated;
 grant select on public.whatsapp_notifications     to authenticated;
 grant select on public.whatsapp_optouts           to authenticated;

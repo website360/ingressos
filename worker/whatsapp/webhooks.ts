@@ -1,11 +1,10 @@
 import type pg from "pg";
 
 /**
- * Reprocessamento de eventos de webhook que falharam ao processar.
- *
- * O processamento em si vive em `shared/whatsapp/webhook-processor.ts`
- * (Tarefa 7). Até lá, nada a reprocessar.
+ * Reprocessa eventos de webhook que a rota gravou mas não conseguiu processar
+ * (o processamento em si é a função `whatsapp_reprocess_webhooks`, no banco).
  */
-export async function reprocessPendingWebhooks(_db: pg.Pool): Promise<number> {
-  return 0;
+export async function reprocessPendingWebhooks(db: pg.Pool): Promise<number> {
+  const { rows } = await db.query<{ n: number }>(`select public.whatsapp_reprocess_webhooks(200) as n`);
+  return rows[0]?.n ?? 0;
 }

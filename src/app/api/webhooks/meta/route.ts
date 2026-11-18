@@ -7,17 +7,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Webhook da API oficial do WhatsApp (Meta).
  *
  * GET  — aperto de mão: a Meta manda `hub.verify_token` e espera o
- *        `hub.challenge` de volta. O token é o que a tela de Configurações
- *        mostra para copiar.
- * POST — eventos. Interessam só as situações das mensagens que o sistema
- *        enviou (enviada/entregue/lida/falhou). Mensagem recebida é ignorada:
- *        o sistema não conversa, só entrega ingresso.
+ *        `hub.challenge` de volta.
+ * POST — eventos. A assinatura `X-Hub-Signature-256` (HMAC do corpo cru com o
+ *        segredo do app) é conferida ANTES de qualquer gravação. Depois:
+ *        1. o corpo cru vai para `whatsapp_webhook_events` e é processado no
+ *           banco (`whatsapp_ingest_webhook`): situação das mensagens da fila
+ *           nova, pedido de saída, qualidade do número, aprovação de modelo;
+ *        2. mensagens antigas (enviadas pelo cron, em `whatsapp_messages`)
+ *           seguem sendo atualizadas como antes.
  *
- * A empresa é achada pelo id do número (`metadata.phone_number_id`) e o corpo
- * só é aceito se a assinatura bater com o segredo do app DAQUELA empresa.
+ * HTTP 200 da API de envio não é entrega: entrega é o "delivered" que chega
+ * aqui. Responder 200 rápido — a Meta reenvia o que não receber 200, e o
+ * processamento é idempotente.
+ *
+ * Variáveis de ambiente (META_APP_SECRET, META_VERIFY_TOKEN,
+ * META_PHONE_NUMBER_ID) têm precedência sobre o que está salvo na tela.
  */
 
 export const dynamic = "force-dynamic";
+
+const MAX_BODY_BYTES = 1_000_000;
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -25,6 +34,14 @@ export async function GET(request: NextRequest) {
 
   if (params.get("hub.mode") !== "subscribe" || !token) {
     return new NextResponse("Requisição inválida.", { status: 400 });
+  }
+
+  const envToken = process.env.META_VERIFY_TOKEN;
+  if (envToken) {
+    if (token !== envToken) {
+      return new NextResponse("Token de verificação não confere.", { status: 403 });
+    }
+    return new NextResponse(params.get("hub.challenge") ?? "", { status: 200 });
   }
 
   const admin = createAdminClient();
@@ -42,7 +59,6 @@ export async function GET(request: NextRequest) {
 interface MetaStatus {
   id: string;
   status: string;
-  timestamp?: string;
   errors?: { code?: number; title?: string; message?: string; error_data?: { details?: string } }[];
 }
 
@@ -57,8 +73,16 @@ interface MetaWebhookBody {
 }
 
 export async function POST(request: NextRequest) {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Corpo grande demais." }, { status: 413 });
+  }
+
   // A assinatura é sobre o corpo CRU: ler como texto antes de qualquer parse.
   const raw = await request.text();
+  if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Corpo grande demais." }, { status: 413 });
+  }
 
   let body: MetaWebhookBody;
   try {
@@ -68,34 +92,47 @@ export async function POST(request: NextRequest) {
   }
 
   const changes = (body.entry ?? []).flatMap((entry) => entry.changes ?? []);
-  const phoneNumberId = changes.find((c) => c.value?.metadata?.phone_number_id)?.value?.metadata
-    ?.phone_number_id;
-  if (!phoneNumberId) return NextResponse.json({ ignored: "sem número" });
+  const phoneNumberId =
+    changes.find((c) => c.value?.metadata?.phone_number_id)?.value?.metadata?.phone_number_id ?? null;
 
   const admin = createAdminClient();
-  const { data: connection } = await admin
+  const { data: connections } = await admin
     .from("whatsapp_connections")
-    .select("tenant_id, meta_app_secret")
-    .eq("provider", "meta")
-    .eq("meta_phone_number_id", phoneNumberId)
-    .maybeSingle();
+    .select("tenant_id, meta_app_secret, meta_phone_number_id")
+    .eq("provider", "meta");
 
-  if (!connection?.meta_app_secret) {
+  // Pelo id do número; sem ele (eventos de conta/qualidade), a única empresa
+  // com Meta. O id vindo da variável de ambiente também identifica.
+  const list = connections ?? [];
+  const connection =
+    list.find((c) => phoneNumberId && c.meta_phone_number_id === phoneNumberId) ??
+    (list.length === 1 &&
+    (!phoneNumberId || phoneNumberId === process.env.META_PHONE_NUMBER_ID)
+      ? list[0]
+      : undefined);
+
+  const secret = process.env.META_APP_SECRET || connection?.meta_app_secret;
+  if (!connection || !secret) {
     return NextResponse.json({ error: "Número não configurado." }, { status: 404 });
   }
 
-  if (
-    !verifyMetaSignature(
-      raw,
-      request.headers.get("x-hub-signature-256"),
-      connection.meta_app_secret,
-    )
-  ) {
+  if (!verifyMetaSignature(raw, request.headers.get("x-hub-signature-256"), secret)) {
     return NextResponse.json({ error: "Assinatura inválida." }, { status: 401 });
   }
 
-  const statuses = changes.flatMap((c) => c.value?.statuses ?? []);
+  // 1. Fila nova: grava cru e processa no banco. Falha de processamento fica
+  //    registrada no evento e o worker reprocessa — aqui não vira erro HTTP.
+  const { error: ingestError } = await admin.rpc("whatsapp_ingest_webhook", {
+    p_phone_number_id: phoneNumberId,
+    p_payload: body as never,
+  });
+  if (ingestError) {
+    // Nem gravou: devolve erro para a Meta tentar de novo mais tarde.
+    return NextResponse.json({ error: "Falha ao registrar o evento." }, { status: 500 });
+  }
 
+  // 2. Caminho antigo: mensagens enviadas pelo cron.
+  const statuses = changes.flatMap((c) => c.value?.statuses ?? []);
   for (const event of statuses) {
     const next = mapMetaStatus(event.status);
     if (!next || !event.id) continue;
@@ -123,6 +160,5 @@ export async function POST(request: NextRequest) {
       .eq("id", message.id);
   }
 
-  // A Meta reenvia o que não receber 200 — responder rápido e sempre 200 aqui.
   return NextResponse.json({ ok: true, statuses: statuses.length });
 }

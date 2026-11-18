@@ -80,6 +80,11 @@ const FUNCTIONS = {
     args: "{ p_event?: string | null; p_from?: string | null; p_to?: string | null; p_include_uncertain?: boolean }",
     returns: "number",
   },
+  // Webhook da Meta: só o service role (a rota) chama.
+  whatsapp_ingest_webhook: {
+    args: "{ p_phone_number_id: string | null; p_payload: Json }",
+    returns: "Json",
+  },
   whatsapp_optout_set: { args: "{ p_phone: string; p_optout: boolean }", returns: "undefined" },
   whatsapp_update_capacity: {
     args: "{ p_rate: number; p_daily: number; p_concurrency: number }",
