@@ -10,7 +10,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EVENT_STATUS } from "@/config/status-maps";
 import { ROUTES } from "@/constants/routes";
-import { DeleteEventButton } from "@/features/events/components/delete-event-button";
+import { EventRowActions } from "@/features/events/components/event-row-actions";
 import { PublicEventLink } from "@/features/events/components/public-event-link";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import type { EventStats } from "@/repositories";
@@ -52,6 +52,13 @@ export function EventsTable({ events, canDelete }: { events: EventStats[]; canDe
 
           return (
             <div className="flex min-w-56 items-center gap-3">
+              {canDelete && (
+                <EventRowActions
+                  eventId={row.original.event_id!}
+                  name={row.original.name ?? "evento"}
+                  registrations={row.original.seats_taken ?? 0}
+                />
+              )}
               {/* Miniatura da capa: o organizador confere o resultado do upload
                   na própria listagem, sem abrir o evento. */}
               <div className="relative size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
@@ -128,23 +135,6 @@ export function EventsTable({ events, canDelete }: { events: EventStats[]; canDe
           <PublicEventLink slug={row.original.slug!} status={row.original.status} variant="icon" />
         ),
       },
-      ...(canDelete
-        ? [
-            {
-              id: "actions",
-              header: "",
-              enableSorting: false,
-              cell: ({ row }) => (
-                <DeleteEventButton
-                  variant="icon"
-                  eventId={row.original.event_id!}
-                  name={row.original.name ?? "evento"}
-                  registrations={row.original.seats_taken ?? 0}
-                />
-              ),
-            } satisfies ColumnDef<EventStats, unknown>,
-          ]
-        : []),
     ],
     [canDelete],
   );

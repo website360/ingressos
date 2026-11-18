@@ -20,22 +20,34 @@ import { archiveEvent } from "@/features/events/actions/event.actions";
 import { toastActionFailure } from "@/lib/action-failure";
 import { formatNumber } from "@/lib/format";
 
-interface Props {
+interface EventRef {
   eventId: string;
   name: string;
   /** Inscrições ativas — entram no aviso, para ninguém excluir sem perceber. */
   registrations: number;
-  /** `icon` para a linha da tabela; `button` para o cabeçalho do evento. */
-  variant?: "icon" | "button";
+}
+
+interface DialogProps extends EventRef {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Para onde ir depois de excluir. Sem valor, fica na tela e só atualiza. */
+  redirectTo?: string;
 }
 
 /**
- * Exclui o evento: some da lista e a página pública sai do ar. As inscrições
- * ficam guardadas (RN-10) — o aviso diz isso para não assustar nem enganar.
+ * Confirmação de exclusão. O evento some da lista e a página pública sai do
+ * ar; as inscrições ficam guardadas (RN-10) — o aviso diz isso para não
+ * assustar nem enganar.
  */
-export function DeleteEventButton({ eventId, name, registrations, variant = "button" }: Props) {
+export function DeleteEventDialog({
+  eventId,
+  name,
+  registrations,
+  open,
+  onOpenChange,
+  redirectTo,
+}: DialogProps) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
   function confirm() {
@@ -52,69 +64,65 @@ export function DeleteEventButton({ eventId, name, registrations, variant = "but
         return;
       }
       toast.success("Evento excluído.");
-      setOpen(false);
-      // Na página do evento não há o que mostrar depois; na lista, fica nela
-      // (com filtros e página atuais) e só some a linha.
-      if (variant === "button") router.push(ROUTES.admin.events);
+      onOpenChange(false);
+      if (redirectTo) router.push(redirectTo);
       router.refresh();
     });
   }
 
-  // O Dialog vai para um portal, mas o evento de clique do React ainda sobe
-  // pela árvore até a linha da tabela — e a linha abre o evento.
   return (
-    <span className="contents" onClick={(e) => e.stopPropagation()}>
-      {variant === "icon" ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Excluir ${name}`}
-          className="text-muted-foreground hover:text-destructive"
-          onClick={() => setOpen(true)}
-        >
-          <Trash2 />
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={() => setOpen(true)}
-        >
-          <Trash2 /> Excluir
-        </Button>
-      )}
+    <Dialog open={open} onOpenChange={(next) => !isPending && onOpenChange(next)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Excluir “{name}”?</DialogTitle>
+          <DialogDescription>
+            O evento sai da lista e a página pública deixa de funcionar — o link de inscrição para
+            de aceitar novos participantes.
+          </DialogDescription>
+        </DialogHeader>
 
-      <Dialog open={open} onOpenChange={(next) => !isPending && setOpen(next)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir “{name}”?</DialogTitle>
-            <DialogDescription>
-              O evento sai da lista e a página pública deixa de funcionar — o link de inscrição
-              para de aceitar novos participantes.
-            </DialogDescription>
-          </DialogHeader>
+        {registrations > 0 && (
+          <p className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+            Este evento tem <strong>{formatNumber(registrations)}</strong>{" "}
+            {registrations === 1 ? "inscrição" : "inscrições"}. Elas continuam guardadas, mas
+            ninguém é avisado da exclusão — se o evento foi cancelado, avise os inscritos antes.
+          </p>
+        )}
 
-          {registrations > 0 && (
-            <p className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-              Este evento tem <strong>{formatNumber(registrations)}</strong>{" "}
-              {registrations === 1 ? "inscrição" : "inscrições"}. Elas continuam guardadas, mas
-              ninguém é avisado da exclusão — se o evento foi cancelado, avise os inscritos antes.
-            </p>
-          )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Manter evento
+          </Button>
+          <Button variant="destructive" onClick={confirm} loading={isPending}>
+            <Trash2 /> Excluir evento
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
-              Manter evento
-            </Button>
-            <Button variant="destructive" onClick={confirm} loading={isPending}>
-              <Trash2 /> Excluir evento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </span>
+/** Botão "Excluir" do cabeçalho da página do evento. */
+export function DeleteEventButton(props: EventRef) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="text-destructive hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 /> Excluir
+      </Button>
+      <DeleteEventDialog
+        {...props}
+        open={open}
+        onOpenChange={setOpen}
+        redirectTo={ROUTES.admin.events}
+      />
+    </>
   );
 }
