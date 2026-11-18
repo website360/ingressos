@@ -44,6 +44,11 @@ export function SeatCounter({ eventId, registrationHref, initial }: SeatCounterP
     queryKey: qk.events.availability(eventId),
     queryFn: () => fetchAvailability(eventId),
     initialData: initial,
+    // O `initial` vem do HTML em cache (ISR, até 5 min de idade). Com o
+    // staleTime global de 60s ele valeria como "fresco" e a página mostraria
+    // as vagas antigas até o primeiro refetch. Aqui o dado nasce velho: a
+    // consulta sai assim que a página abre.
+    staleTime: 0,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });
