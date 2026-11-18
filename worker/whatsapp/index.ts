@@ -9,6 +9,7 @@
  * (têm precedência sobre a credencial salva na tela), META_GRAPH_VERSION,
  * WORKER_ID e DATABASE_SSL_CA. O PM2 injeta o .env.local (ecosystem.config.js).
  */
+import { resolveMetaBaseUrl } from "./config";
 import { startWorker } from "./dispatcher";
 import { jsonLogger } from "./log";
 import { reprocessPendingWebhooks } from "./webhooks";
@@ -28,7 +29,7 @@ async function main() {
     workerId: process.env.WORKER_ID,
     // Só para homologação/carga contra um simulador da Graph API. Em produção
     // fica vazio e vale META_GRAPH_VERSION.
-    metaBaseUrl: process.env.META_BASE_URL || undefined,
+    metaBaseUrl: resolveMetaBaseUrl(process.env.META_BASE_URL),
     reprocessWebhooks: reprocessPendingWebhooks,
   });
 
@@ -54,4 +55,7 @@ process.on("unhandledRejection", (reason) => {
   jsonLogger("error", "promessa rejeitada sem tratamento", { error: String(reason) });
 });
 
-void main();
+void main().catch((error: Error) => {
+  jsonLogger("error", "worker não subiu", { error: error.message });
+  process.exit(1);
+});
