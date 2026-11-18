@@ -54,3 +54,23 @@ describe("consentimento do WhatsApp", () => {
     expect(registrationConsents(data).map((c) => c.type)).toEqual(["lgpd", "regulamento"]);
   });
 });
+
+describe("o servidor decide se a caixa foi oferecida", () => {
+  it("aceite vindo do navegador com o WhatsApp desligado é descartado", () => {
+    const data = registrationSchema.parse({ ...base, accept_whatsapp: true });
+    expect(registrationConsents(data, { whatsappOffered: false }).map((c) => c.type)).toEqual([
+      "lgpd",
+      "regulamento",
+    ]);
+  });
+
+  it("oferecida pelo servidor mas ausente no envio: registra como recusa", () => {
+    const data = registrationSchema.parse(base);
+    expect(registrationConsents(data, { whatsappOffered: true })).toContainEqual({
+      type: "whatsapp",
+      version: 1,
+      accepted: false,
+      subject: "11987654321",
+    });
+  });
+});

@@ -12,6 +12,7 @@ import { splitFullName } from "@shared/validation/name";
 
 import { registrationConsents } from "@/features/registrations/lib/consents";
 import { getRequestContext } from "@/lib/auth/request-context";
+import { isWhatsappOptInEnabled } from "@/lib/whatsapp-optin";
 import { AppError, fail, mapPostgrestError, ok, type Result } from "@/lib/errors";
 import { createPublicClient } from "@/lib/supabase/public";
 
@@ -37,6 +38,9 @@ export async function submitRegistration(
     const data = registrationSchema.parse(input);
     const context = await getRequestContext();
 
+    // A caixa do WhatsApp foi mesmo oferecida? O servidor decide de novo.
+    const whatsappOffered = await isWhatsappOptInEnabled(eventId).catch(() => false);
+
     const client = createPublicClient();
     const { data: result, error } = await client.rpc("create_registration", {
       p_event_id: eventId,
@@ -50,7 +54,7 @@ export async function submitRegistration(
         city: data.city,
         state: data.state,
       },
-      p_consents: registrationConsents(data) as never,
+      p_consents: registrationConsents(data, { whatsappOffered }) as never,
       p_context: {
         source: "landing",
         ip: context.ip,

@@ -26,7 +26,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
   const [availability, whatsappOptIn] = await Promise.all([
     publicRepository.availability(event.id),
     // Sem conseguir saber, não oferece: melhor não prometer o WhatsApp.
-    isWhatsappOptInEnabled().catch(() => false),
+    isWhatsappOptInEnabled(event.id).catch(() => false),
   ]);
   const isFull = (availability?.seats_available ?? 0) <= 0;
 
