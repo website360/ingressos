@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { revalidatePublicEvent } from "@/lib/revalidate-event";
+
 import {
   eventContentSchema,
   IMAGE_MAX_BYTES,
@@ -105,7 +107,7 @@ async function writeSections(
   }
 
   revalidatePath(ROUTES.admin.event(eventId));
-  revalidatePath("/evento", "layout");
+  revalidatePublicEvent(event.slug);
 }
 
 /** Grava todo o conteúdo da landing numa chamada (tela de edição). */
@@ -180,10 +182,13 @@ export async function uploadEventImage(
     const { events } = await getRepositories();
     const url = await events.uploadImage(path, file);
 
-    await events.update(eventId, kind === "cover" ? { cover_url: url } : { banner_url: url });
+    const event = await events.update(
+      eventId,
+      kind === "cover" ? { cover_url: url } : { banner_url: url },
+    );
 
     revalidatePath(ROUTES.admin.event(eventId));
-    revalidatePath("/evento", "layout");
+    revalidatePublicEvent(event.slug);
     return ok({ url });
   } catch (error) {
     return fail(error);
@@ -198,9 +203,13 @@ export async function removeEventImage(
     await requirePermission(PERMISSIONS.EVENT_UPDATE);
 
     const { events } = await getRepositories();
-    await events.update(eventId, kind === "cover" ? { cover_url: null } : { banner_url: null });
+    const event = await events.update(
+      eventId,
+      kind === "cover" ? { cover_url: null } : { banner_url: null },
+    );
 
     revalidatePath(ROUTES.admin.event(eventId));
+    revalidatePublicEvent(event.slug);
     return ok({ eventId });
   } catch (error) {
     return fail(error);

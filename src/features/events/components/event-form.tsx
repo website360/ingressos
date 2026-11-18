@@ -10,6 +10,7 @@ import { Save, Send } from "lucide-react";
 
 import { eventSchema, type EventInput } from "@shared/schemas/event";
 
+import { StickyActionBar } from "@/components/shared/sticky-action-bar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -36,6 +37,7 @@ export function EventForm({ event }: EventFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const isEdit = Boolean(event);
+  const published = event?.status === "publicado";
 
   const form = useForm<EventInput>({
     resolver: zodResolver(eventSchema),
@@ -124,23 +126,33 @@ export function EventForm({ event }: EventFormProps) {
           </TabsContent>
         </Tabs>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="submit"
-            variant="outline"
-            loading={isPending}
-            onClick={form.handleSubmit((values) => submit(values, "rascunho"))}
-          >
-            <Save /> Salvar rascunho
-          </Button>
-          <Button
-            type="button"
-            loading={isPending}
-            onClick={form.handleSubmit((values) => submit(values, "publicado"))}
-          >
-            <Send /> Publicar evento
-          </Button>
-        </div>
+        <StickyActionBar>
+          {published ? (
+            // Evento no ar: salvar mantém publicado. "Salvar rascunho" aqui
+            // tirava a página do ar sem a pessoa perceber.
+            <Button type="submit" loading={isPending}>
+              <Save /> Salvar alterações
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="submit"
+                variant="outline"
+                loading={isPending}
+                onClick={form.handleSubmit((values) => submit(values, "rascunho"))}
+              >
+                <Save /> Salvar rascunho
+              </Button>
+              <Button
+                type="button"
+                loading={isPending}
+                onClick={form.handleSubmit((values) => submit(values, "publicado"))}
+              >
+                <Send /> Publicar evento
+              </Button>
+            </>
+          )}
+        </StickyActionBar>
       </form>
     </Form>
   );

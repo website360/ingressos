@@ -8,6 +8,7 @@ import { ROUTES } from "@/constants/routes";
 import { AppError, fail, ok, type Result } from "@/lib/errors";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/session";
+import { revalidatePublicEvent } from "@/lib/revalidate-event";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRepositories } from "@/repositories";
 import type { TablesInsert } from "@/lib/supabase/database.types";
@@ -107,10 +108,13 @@ export async function updateEvent(id: string, input: EventInput): Promise<Result
     }
 
     const { events } = await getRepositories();
-    await events.update(id, toRow(data, session.activeTenantId!));
+    const before = await events.findById(id);
+    const after = await events.update(id, toRow(data, session.activeTenantId!));
 
     revalidatePath(ROUTES.admin.events);
     revalidatePath(ROUTES.admin.event(id));
+    // Endereço antigo e novo: se o slug mudou, o antigo vira redirecionamento.
+    revalidatePublicEvent(before.slug, after.slug);
     return ok({ id });
   } catch (error) {
     return fail(error);
@@ -148,7 +152,7 @@ export async function archiveEvent(id: string): Promise<Result<{ id: string }>> 
 
     revalidatePath(ROUTES.admin.events);
     revalidatePath(ROUTES.admin.dashboard);
-    revalidatePath(ROUTES.public.event(event.slug));
+    revalidatePublicEvent(event.slug);
     return ok({ id });
   } catch (error) {
     return fail(error);

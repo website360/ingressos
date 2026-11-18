@@ -10,6 +10,7 @@ import { Save } from "lucide-react";
 
 import { eventContentSchema, type EventContentInput } from "@shared/schemas/event-content";
 
+import { StickyActionBar } from "@/components/shared/sticky-action-bar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -88,11 +89,11 @@ export function EventContentForm({ event, content }: Props) {
           <FaqSection form={form} />
           <DocumentsSection form={form} />
 
-          <div className="flex justify-end">
-            <Button type="submit" size="lg" loading={isPending}>
+          <StickyActionBar>
+            <Button type="submit" loading={isPending}>
               <Save /> Salvar conteúdo
             </Button>
-          </div>
+          </StickyActionBar>
         </form>
       </Form>
     </div>
