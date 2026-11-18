@@ -13,6 +13,11 @@ port = 54322
 shadow_port = 54320
 major_version = 15
 
+# O seed.sql é anterior à migration single_company (cria duas empresas) e
+# quebra o `supabase start`. Os testes de integração criam os próprios dados.
+[db.seed]
+enabled = false
+
 [db.pooler]
 enabled = true
 port = 54329
