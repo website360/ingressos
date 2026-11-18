@@ -33,6 +33,19 @@ export type SupportStatus = "aberto" | "em_andamento" | "aguardando" | "resolvid
 export type TenantStatus = "trial" | "ativo" | "suspenso" | "cancelado";
 export type TicketStatus = "valido" | "utilizado" | "cancelado" | "expirado" | "reemitido";
 export type UserRole = "admin" | "organizador" | "recepcao" | "suporte";
+export type WhatsappNotificationKind =
+  "registration_confirmed" | "registration_cancelled" | "ticket_code";
+export type WhatsappNotificationStatus =
+  | "pendente"
+  | "processando"
+  | "aceita"
+  | "enviada"
+  | "entregue"
+  | "lida"
+  | "falhou"
+  | "cancelada"
+  | "incerta"
+  | "bloqueada";
 export type WhatsappState = "nunca_conectado" | "conectando" | "conectado" | "desconectado";
 
 type AttendeesRow = {
@@ -124,6 +137,7 @@ type ConsentsRow = {
   accepted_at: string;
   ip: string | null;
   user_agent: string | null;
+  subject: string | null;
 };
 
 type EmailMessagesRow = {
@@ -636,6 +650,17 @@ type WhatsappConnectionsRow = {
   meta_app_secret: string | null;
   meta_verify_token: string | null;
   meta_templates: Json;
+  rate_per_second: number;
+  daily_unique_limit: number;
+  worker_concurrency: number;
+  paused: boolean;
+  paused_reason: string | null;
+  paused_at: string | null;
+  paused_by: string | null;
+  breaker_open_until: string | null;
+  breaker_manual: boolean;
+  quality_rating: string | null;
+  messaging_tier: string | null;
 };
 
 type WhatsappMessagesRow = {
@@ -654,6 +679,94 @@ type WhatsappMessagesRow = {
   entity_id: string | null;
   created_at: string;
   job_id: string | null;
+};
+
+type WhatsappNotificationsRow = {
+  id: string;
+  tenant_id: string;
+  event_id: string | null;
+  registration_id: string | null;
+  kind: WhatsappNotificationKind;
+  phone_e164: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  template_version: number | null;
+  language: string | null;
+  consent_id: string | null;
+  status: WhatsappNotificationStatus;
+  block_reason: string | null;
+  attempts: number;
+  max_attempts: number;
+  next_attempt_at: string;
+  locked_at: string | null;
+  locked_by: string | null;
+  request_started_at: string | null;
+  meta_message_id: string | null;
+  last_error_code: number | null;
+  last_error: string | null;
+  params: Json;
+  queued_at: string;
+  accepted_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  failed_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  dedupe_key: string;
+};
+
+type WhatsappOptoutsRow = {
+  tenant_id: string;
+  phone_e164: string;
+  reason: string;
+  source: string;
+  created_at: string;
+  created_by: string | null;
+};
+
+type WhatsappRateBucketsRow = {
+  tenant_id: string;
+  tokens: number;
+  refilled_at: string;
+  throttle_factor: number;
+  throttle_until: string | null;
+};
+
+type WhatsappTemplatesRow = {
+  id: string;
+  tenant_id: string;
+  key: WhatsappNotificationKind;
+  name: string;
+  language: string;
+  version: number;
+  category: string;
+  header_type: string;
+  body_preview: string;
+  param_order: Json;
+  button_param: string | null;
+  meta_status: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type WhatsappWebhookEventsRow = {
+  id: string;
+  received_at: string;
+  phone_number_id: string | null;
+  payload: Json;
+  processed_at: string | null;
+  attempts: number;
+  error: string | null;
+};
+
+type WhatsappWorkerHeartbeatsRow = {
+  worker_id: string;
+  started_at: string;
+  last_seen_at: string;
+  stats: Json;
 };
 
 type Insertable<T, Optional extends keyof T> = Omit<T, Optional> & Partial<Pick<T, Optional>>;
@@ -746,7 +859,7 @@ export type Database = {
         Row: ConsentsRow;
         Insert: Insertable<
           ConsentsRow,
-          "id" | "document_version" | "accepted_at" | "ip" | "user_agent"
+          "id" | "document_version" | "accepted_at" | "ip" | "user_agent" | "subject"
         >;
         Update: Partial<ConsentsRow>;
         Relationships: [];
@@ -1125,6 +1238,17 @@ export type Database = {
           | "meta_app_secret"
           | "meta_verify_token"
           | "meta_templates"
+          | "rate_per_second"
+          | "daily_unique_limit"
+          | "worker_concurrency"
+          | "paused"
+          | "paused_reason"
+          | "paused_at"
+          | "paused_by"
+          | "breaker_open_until"
+          | "breaker_manual"
+          | "quality_rating"
+          | "messaging_tier"
         >;
         Update: Partial<WhatsappConnectionsRow>;
         Relationships: [];
@@ -1146,6 +1270,92 @@ export type Database = {
           | "job_id"
         >;
         Update: Partial<WhatsappMessagesRow>;
+        Relationships: [];
+      };
+      whatsapp_notifications: {
+        Row: WhatsappNotificationsRow;
+        Insert: Insertable<
+          WhatsappNotificationsRow,
+          | "id"
+          | "event_id"
+          | "registration_id"
+          | "phone_e164"
+          | "template_id"
+          | "template_name"
+          | "template_version"
+          | "language"
+          | "consent_id"
+          | "status"
+          | "block_reason"
+          | "attempts"
+          | "max_attempts"
+          | "next_attempt_at"
+          | "locked_at"
+          | "locked_by"
+          | "request_started_at"
+          | "meta_message_id"
+          | "last_error_code"
+          | "last_error"
+          | "params"
+          | "queued_at"
+          | "accepted_at"
+          | "sent_at"
+          | "delivered_at"
+          | "read_at"
+          | "failed_at"
+          | "cancelled_at"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<WhatsappNotificationsRow>;
+        Relationships: [];
+      };
+      whatsapp_optouts: {
+        Row: WhatsappOptoutsRow;
+        Insert: Insertable<WhatsappOptoutsRow, "source" | "created_at" | "created_by">;
+        Update: Partial<WhatsappOptoutsRow>;
+        Relationships: [];
+      };
+      whatsapp_rate_buckets: {
+        Row: WhatsappRateBucketsRow;
+        Insert: Insertable<
+          WhatsappRateBucketsRow,
+          "tokens" | "refilled_at" | "throttle_factor" | "throttle_until"
+        >;
+        Update: Partial<WhatsappRateBucketsRow>;
+        Relationships: [];
+      };
+      whatsapp_templates: {
+        Row: WhatsappTemplatesRow;
+        Insert: Insertable<
+          WhatsappTemplatesRow,
+          | "id"
+          | "language"
+          | "header_type"
+          | "body_preview"
+          | "param_order"
+          | "button_param"
+          | "meta_status"
+          | "active"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<WhatsappTemplatesRow>;
+        Relationships: [];
+      };
+      whatsapp_webhook_events: {
+        Row: WhatsappWebhookEventsRow;
+        Insert: Insertable<
+          WhatsappWebhookEventsRow,
+          "id" | "received_at" | "phone_number_id" | "processed_at" | "attempts" | "error"
+        >;
+        Update: Partial<WhatsappWebhookEventsRow>;
+        Relationships: [];
+      };
+      whatsapp_worker_heartbeats: {
+        Row: WhatsappWorkerHeartbeatsRow;
+        Insert: Insertable<WhatsappWorkerHeartbeatsRow, "started_at" | "last_seen_at" | "stats">;
+        Update: Partial<WhatsappWorkerHeartbeatsRow>;
         Relationships: [];
       };
     };
@@ -1198,6 +1408,32 @@ export type Database = {
       retry_messages: { Args: { p_job_ids: string[] }; Returns: Json };
       request_ticket_code: { Args: { p_cpf: string; p_context?: Json }; Returns: Json };
       verify_ticket_code: { Args: { p_cpf: string; p_code: string }; Returns: Json };
+      whatsapp_queue_stats: {
+        Args: { p_event?: string | null; p_from?: string | null; p_to?: string | null };
+        Returns: Json;
+      };
+      whatsapp_set_paused: {
+        Args: { p_paused: boolean; p_reason?: string | null };
+        Returns: undefined;
+      };
+      whatsapp_cancel_pending: {
+        Args: { p_event?: string | null; p_from?: string | null; p_to?: string | null };
+        Returns: number;
+      };
+      whatsapp_retry: {
+        Args: {
+          p_event?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_include_uncertain?: boolean;
+        };
+        Returns: number;
+      };
+      whatsapp_optout_set: { Args: { p_phone: string; p_optout: boolean }; Returns: undefined };
+      whatsapp_update_capacity: {
+        Args: { p_rate: number; p_daily: number; p_concurrency: number };
+        Returns: undefined;
+      };
     };
     Enums: {
       audit_action: AuditAction;
@@ -1212,6 +1448,8 @@ export type Database = {
       tenant_status: TenantStatus;
       ticket_status: TicketStatus;
       user_role: UserRole;
+      whatsapp_notification_kind: WhatsappNotificationKind;
+      whatsapp_notification_status: WhatsappNotificationStatus;
       whatsapp_state: WhatsappState;
     };
     CompositeTypes: Record<string, never>;

@@ -32,9 +32,9 @@ describe("harness de integração", () => {
       });
       const body = (await response.json()) as { messages: { id: string }[] };
       expect(response.status).toBe(200);
-      expect(body.messages[0].id).toMatch(/^wamid\./);
+      expect(body.messages[0]!.id).toMatch(/^wamid\./);
       expect(meta.requests).toHaveLength(1);
-      expect(meta.requests[0].body).toEqual({ to: "+5511987654321" });
+      expect(meta.requests[0]!.body).toEqual({ to: "+5511987654321" });
     } finally {
       await meta.close();
     }

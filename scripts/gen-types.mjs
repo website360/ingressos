@@ -65,9 +65,32 @@ const FUNCTIONS = {
   // (ver 20260801093600).
   request_ticket_code: { args: "{ p_cpf: string; p_context?: Json }", returns: "Json" },
   verify_ticket_code: { args: "{ p_cpf: string; p_code: string }", returns: "Json" },
+  // Fila do WhatsApp (Meta) — EXECUTE para authenticated, permissão checada
+  // dentro (ver 20260801094300).
+  whatsapp_queue_stats: {
+    args: "{ p_event?: string | null; p_from?: string | null; p_to?: string | null }",
+    returns: "Json",
+  },
+  whatsapp_set_paused: { args: "{ p_paused: boolean; p_reason?: string | null }", returns: "undefined" },
+  whatsapp_cancel_pending: {
+    args: "{ p_event?: string | null; p_from?: string | null; p_to?: string | null }",
+    returns: "number",
+  },
+  whatsapp_retry: {
+    args: "{ p_event?: string | null; p_from?: string | null; p_to?: string | null; p_include_uncertain?: boolean }",
+    returns: "number",
+  },
+  whatsapp_optout_set: { args: "{ p_phone: string; p_optout: boolean }", returns: "undefined" },
+  whatsapp_update_capacity: {
+    args: "{ p_rate: number; p_daily: number; p_concurrency: number }",
+    returns: "undefined",
+  },
 };
 
 function loadDatabaseUrl() {
+  // Variável de ambiente primeiro: gerar a partir do banco LOCAL (com as
+  // migrations novas) sem mexer no .env.local, que aponta para produção.
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const envPath = resolve(process.cwd(), ".env.local");
   if (!existsSync(envPath)) throw new Error(".env.local não encontrado.");
   for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
@@ -112,9 +135,12 @@ function pascal(name) {
   return name.replace(/(^|_)([a-z])/g, (_, __, c) => c.toUpperCase());
 }
 
+const databaseUrl = loadDatabaseUrl();
+const isLocal = /@(127\.0\.0\.1|localhost)[:/]/.test(databaseUrl);
 const client = new pg.Client({
-  connectionString: loadDatabaseUrl(),
-  ssl: { rejectUnauthorized: false },
+  connectionString: databaseUrl,
+  // O Postgres local do Supabase não fala SSL.
+  ssl: isLocal ? false : { rejectUnauthorized: false },
 });
 await client.connect();
 

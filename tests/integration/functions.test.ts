@@ -29,6 +29,12 @@ async function claim(limit: number, worker = "w1") {
   return rows as { id: string }[];
 }
 
+async function claimOne(worker = "w1") {
+  const [row] = await claim(1, worker);
+  if (!row) throw new Error("nada para reivindicar");
+  return row;
+}
+
 async function record(
   id: string,
   outcome: string,
@@ -137,7 +143,7 @@ describe("funções do worker", () => {
 
     it("marca processando, com a trava do worker", async () => {
       await seedPending(1);
-      const [row] = await claim(1, "w9");
+      const row = await claimOne("w9");
       const after = await status(row.id);
       expect(after).toMatchObject({ status: "processando", locked_by: "w9", request_started_at: null });
     });
@@ -146,7 +152,7 @@ describe("funções do worker", () => {
   describe("record_whatsapp_result", () => {
     it("aceita grava o wamid e a hora, e conta a tentativa", async () => {
       await seedPending(1);
-      const [row] = await claim(1);
+      const row = await claimOne();
       await record(row.id, "aceita", { wamid: "wamid.A" });
       expect(await status(row.id)).toMatchObject({
         status: "aceita",
@@ -160,10 +166,10 @@ describe("funções do worker", () => {
     it("retry reagenda e, esgotadas as tentativas, vira falhou", async () => {
       await seedPending(1);
       await db.query(`update public.whatsapp_notifications set max_attempts = 2`);
-      let [row] = await claim(1);
+      let row = await claimOne();
       await record(row.id, "retry", { code: 500, error: "x", retryAt: new Date() });
       expect(await status(row.id)).toMatchObject({ status: "pendente", attempts: 1 });
-      [row] = await claim(1);
+      row = await claimOne();
       await record(row.id, "retry", { code: 500, error: "x", retryAt: new Date() });
       const final = await status(row.id);
       expect(final).toMatchObject({ status: "falhou", attempts: 2, last_error_code: 500 });
@@ -173,21 +179,21 @@ describe("funções do worker", () => {
     it("retry sem contar tentativa (freio da Meta) não esgota", async () => {
       await seedPending(1);
       await db.query(`update public.whatsapp_notifications set max_attempts = 1`);
-      const [row] = await claim(1);
+      const row = await claimOne();
       await record(row.id, "retry", { code: 130429, retryAt: new Date(), count: false });
       expect(await status(row.id)).toMatchObject({ status: "pendente", attempts: 0 });
     });
 
     it("devolver volta para a fila sem gastar tentativa", async () => {
       await seedPending(1);
-      const [row] = await claim(1);
+      const row = await claimOne();
       await record(row.id, "devolver");
       expect(await status(row.id)).toMatchObject({ status: "pendente", attempts: 0, locked_by: null });
     });
 
     it("incerta fica parada, sem reenvio", async () => {
       await seedPending(1);
-      const [row] = await claim(1);
+      const row = await claimOne();
       await record(row.id, "incerta", { error: "timeout depois de enviado" });
       expect(await status(row.id)).toMatchObject({ status: "incerta", attempts: 1 });
       expect(await claim(10)).toHaveLength(0);
@@ -195,7 +201,7 @@ describe("funções do worker", () => {
 
     it("não rebaixa o que o webhook já avançou, mas guarda o wamid", async () => {
       await seedPending(1);
-      const [row] = await claim(1);
+      const row = await claimOne();
       // O webhook chegou primeiro (casou pelo biz_opaque_callback_data).
       await db.query(
         `update public.whatsapp_notifications set status = 'entregue', delivered_at = now() where id = $1`,
@@ -212,7 +218,7 @@ describe("funções do worker", () => {
   describe("reconciliação", () => {
     it("travada sem requisição volta para a fila; com requisição vira incerta", async () => {
       await seedPending(2);
-      const [a, b] = await claim(2);
+      const [a, b] = (await claim(2)) as [{ id: string }, { id: string }];
       await db.query(`select public.mark_whatsapp_request_started($1)`, [[b.id]]);
       await db.query(
         `update public.whatsapp_notifications

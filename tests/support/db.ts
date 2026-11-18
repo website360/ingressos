@@ -123,7 +123,7 @@ export async function createTestEvent(
       opts.capacity ?? 200_000,
     ],
   );
-  return { tenantId, eventId: rows[0].id };
+  return { tenantId, eventId: rows[0]!.id };
 }
 
 /** Configura a empresa com o provedor Meta (credenciais falsas). */
@@ -199,25 +199,41 @@ export async function register(
       JSON.stringify({ source: "teste", ip: "127.0.0.1", user_agent: "vitest" }),
     ],
   );
-  return { registrationId: rows[0].r.registration_id, token: rows[0].r.token };
+  return { registrationId: rows[0]!.r.registration_id, token: rows[0]!.r.token };
 }
 
 /**
  * Roda `fn` como um usuário autenticado (papel `authenticated` + claims do JWT),
  * dentro de uma transação que é desfeita no fim. É assim que a RLS é testada.
  */
+export const TEST_USER_ID = "00000000-0000-0000-0000-0000000000aa";
+
+/** Usuário de verdade no Auth local: gatilhos gravam `updated_by = auth.uid()`. */
+async function ensureTestUser(db: pg.Pool): Promise<void> {
+  await db.query(
+    `insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                             email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                             created_at, updated_at)
+     values ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+             'teste@example.com', 'x', now(), '{}', '{"full_name":"Teste"}', now(), now())
+     on conflict (id) do nothing`,
+    [TEST_USER_ID],
+  );
+}
+
 export async function asUser<T>(
   db: pg.Pool,
   claims: { tenantId?: string; perms?: string[]; role?: "authenticated" | "anon" },
   fn: (client: pg.PoolClient) => Promise<T>,
 ): Promise<T> {
+  await ensureTestUser(db);
   const client = await db.connect();
   try {
     await client.query("begin");
     const role = claims.role ?? "authenticated";
     await client.query(`select set_config('request.jwt.claims', $1, true)`, [
       JSON.stringify({
-        sub: "00000000-0000-0000-0000-0000000000aa",
+        sub: TEST_USER_ID,
         role,
         app_metadata: { active_tenant: claims.tenantId ?? "", perms: claims.perms ?? [] },
       }),
