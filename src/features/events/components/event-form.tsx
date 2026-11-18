@@ -26,7 +26,6 @@ import {
   EventSlugField,
 } from "@/features/events/components/event-fields";
 import { eventFormDefaults } from "@/features/events/lib/event-defaults";
-import { slugify } from "@/lib/utils";
 import type { Event } from "@/repositories";
 
 interface EventFormProps {
@@ -43,13 +42,6 @@ export function EventForm({ event }: EventFormProps) {
     defaultValues: eventFormDefaults(event),
   });
 
-  // Slug acompanha o nome enquanto for um evento novo e o campo não foi tocado.
-  const name = form.watch("name");
-  React.useEffect(() => {
-    if (!isEdit && !form.formState.dirtyFields.slug && name) {
-      form.setValue("slug", slugify(name));
-    }
-  }, [name, isEdit, form]);
 
   function submit(values: EventInput, status?: EventInput["status"]) {
     const payload = status ? { ...values, status } : values;
@@ -91,7 +83,7 @@ export function EventForm({ event }: EventFormProps) {
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <EventNameField form={form} />
-                <EventSlugField form={form} />
+                <EventSlugField form={form} followName={!isEdit} />
                 <EventDescriptionFields form={form} />
               </CardContent>
             </Card>

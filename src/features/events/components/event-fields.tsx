@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import type { UseFormReturn } from "react-hook-form";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 
 import type { EventInput } from "@shared/schemas/event";
 import { BR_STATES } from "@shared/validation/phone";
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import type { AddressLookup } from "@/features/events/actions/address.actions";
 import { CepField } from "@/features/events/components/cep-field";
+import { ROUTES } from "@/constants/routes";
+import { deaccent, slugify } from "@/lib/utils";
 
 /**
  * Blocos de campo do evento, compartilhados entre a tela de edição (abas) e o
@@ -53,7 +55,42 @@ export function EventNameField({ form }: FieldsProps) {
   );
 }
 
-export function EventSlugField({ form }: FieldsProps) {
+/**
+ * Normaliza o que a pessoa digita no endereço, sem atrapalhar a digitação:
+ * diferente de `slugify`, mantém o hífen do fim ("meu-" enquanto vem "show").
+ */
+function slugifyTyping(value: string): string {
+  return deaccent(value)
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-/, "");
+}
+
+/**
+ * Endereço na web do evento.
+ *
+ * Com `followName`, acompanha o nome enquanto a pessoa não mexe nele. Quem
+ * marca "mexeu" é a digitação no próprio campo — não `dirtyFields`, que o
+ * `setValue` automático também acabava acionando e travava o endereço na
+ * primeira letra. Apagar o endereço todo volta a acompanhar o nome.
+ */
+export function EventSlugField({ form, followName = false }: FieldsProps & { followName?: boolean }) {
+  const [customized, setCustomized] = React.useState(false);
+  const name = useWatch({ control: form.control, name: "name" });
+  const slug = useWatch({ control: form.control, name: "slug" });
+  const [origin, setOrigin] = React.useState("");
+
+  React.useEffect(() => setOrigin(window.location.origin), []);
+
+  React.useEffect(() => {
+    if (!followName || customized) return;
+    const next = slugify(name ?? "");
+    if (next === form.getValues("slug")) return;
+    form.setValue("slug", next, { shouldValidate: form.formState.isSubmitted });
+  }, [name, followName, customized, form]);
+
   return (
     <FormField
       control={form.control}
@@ -62,9 +99,36 @@ export function EventSlugField({ form }: FieldsProps) {
         <FormItem className="md:col-span-2">
           <FormLabel>Endereço na web</FormLabel>
           <FormControl>
-            <Input {...field} placeholder="congresso-tecnologia-2026" />
+            <Input
+              {...field}
+              placeholder="congresso-tecnologia-2026"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => {
+                const value = slugifyTyping(e.target.value);
+                setCustomized(value !== "");
+                field.onChange(value);
+              }}
+              onBlur={() => {
+                // Saiu com o campo vazio: volta a seguir o nome.
+                const value = slugify(field.value ?? "");
+                field.onChange(value || (followName ? slugify(name ?? "") : ""));
+                field.onBlur();
+              }}
+            />
           </FormControl>
-          <FormDescription>Usado no link público do evento.</FormDescription>
+          <FormDescription className="break-all">
+            {origin ? (
+              <>
+                Link do evento: {origin}
+                {ROUTES.public.event("")}
+                <span className="font-medium text-foreground">{slug || "…"}</span>
+              </>
+            ) : (
+              "Usado no link público do evento."
+            )}
+            {followName && !customized && " · acompanha o nome; edite para personalizar."}
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}

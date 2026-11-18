@@ -52,7 +52,7 @@ import {
   type FaqChoice,
 } from "@/features/events/lib/faq-selection";
 import { addFaqTemplates } from "@/features/settings/actions/faq-template.actions";
-import { cn, slugify } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export interface WizardTemplate {
   id: string;
@@ -148,17 +148,8 @@ function WizardBody({
   // a renderização. Sem estas leituras, os handlers abaixo veriam sempre
   // "nada mudou" — e o "Próximo" seguiria sem salvar.
   const eventDirty = eventForm.formState.isDirty;
-  const slugTouched = Boolean(eventForm.formState.dirtyFields.slug);
   const contentDirty = contentForm.formState.isDirty;
 
-  // Enquanto o evento não existe, o endereço na web acompanha o nome — até a
-  // pessoa mexer nele.
-  const name = eventForm.watch("name");
-  React.useEffect(() => {
-    if (!eventId && !slugTouched && name) {
-      eventForm.setValue("slug", slugify(name));
-    }
-  }, [name, eventId, slugTouched, eventForm]);
 
   const step = WIZARD_STEPS[current]!;
   const isLast = current === WIZARD_STEPS.length - 1;
@@ -419,7 +410,7 @@ function WizardBody({
                   {step.id === "essencial" && (
                     <>
                       <EventNameField form={eventForm} />
-                      <EventSlugField form={eventForm} />
+                      <EventSlugField form={eventForm} followName={!eventId} />
                       <EventDateFields form={eventForm} />
                       <EventCapacityField form={eventForm} />
                     </>
