@@ -314,6 +314,55 @@ describe("worker do WhatsApp", () => {
     expect(await counts()).toEqual({ aceita: 40 });
   });
 
+  it("200 sem wamid legível: incerta, e a Meta recebeu uma vez só", async () => {
+    await enroll(1);
+    await start(() => ({ status: 200, body: {} }));
+    await until(async () => (await counts()).incerta === 1);
+    await sleep(800);
+    expect(meta!.requests).toHaveLength(1);
+  });
+
+  it("modelo fixado foi desativado: sai pela versão ativa", async () => {
+    await enroll(1);
+    await db.query(
+      `update public.whatsapp_templates set active = false where tenant_id = $1 and key = 'registration_confirmed'`,
+      [tenantId],
+    );
+    await db.query(
+      `update public.whatsapp_templates set active = true, meta_status = 'aprovado'
+        where tenant_id = $1 and key = 'registration_confirmed' and version = 2`,
+      [tenantId],
+    );
+    try {
+      await start();
+      await settle(1);
+      const body = meta!.requests[0]!.body as { template: { name: string } };
+      expect(body.template.name).toBe("confirmacao_inscricao");
+    } finally {
+      await db.query(
+        `update public.whatsapp_templates set active = false where tenant_id = $1 and key = 'registration_confirmed'`,
+        [tenantId],
+      );
+      await db.query(
+        `update public.whatsapp_templates set active = true
+          where tenant_id = $1 and key = 'registration_confirmed' and version = 1`,
+        [tenantId],
+      );
+    }
+  });
+
+  it("falha antes do envio (fuso inválido): falhou, não fica girando na fila", async () => {
+    await enroll(1);
+    await db.query(`update public.events set timezone = 'Fuso/Inexistente' where id = $1`, [eventId]);
+    try {
+      await start();
+      await until(async () => (await counts()).falhou === 1);
+      expect(meta!.requests).toHaveLength(0);
+    } finally {
+      await db.query(`update public.events set timezone = 'America/Sao_Paulo' where id = $1`, [eventId]);
+    }
+  });
+
   it("grava batimento com memória e CPU do processo", async () => {
     await start(undefined, { workerId: "w-batimento" });
     await until(async () => {

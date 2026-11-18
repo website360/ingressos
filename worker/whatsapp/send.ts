@@ -53,10 +53,13 @@ interface Context {
   ticket_signature: string | null;
 }
 
+/**
+ * Só "número sem WhatsApp" vira opt-out. 131049 (limite de marketing por
+ * pessoa) e 131050 (a pessoa parou de receber MARKETING) não dizem nada sobre
+ * mensagens de utilidade: bloquear o número tiraria dela as confirmações.
+ */
 const RECIPIENT_OPTOUT: Record<number, string> = {
   131026: "invalido",
-  131049: "bloqueio",
-  131050: "bloqueio",
 };
 
 async function record(
@@ -103,12 +106,19 @@ async function loadContext(db: pg.Pool, n: Notification): Promise<Context | null
   return rows[0] ?? null;
 }
 
+/**
+ * A versão gravada na fila vale enquanto estiver ATIVA. Se o operador trocou
+ * de versão (a anterior foi pausada pela Meta, por exemplo), o que está na
+ * fila sai pela versão ativa — senão a fila inteira tropeçaria de novo no
+ * modelo pausado assim que os envios fossem retomados.
+ */
 async function loadTemplate(db: pg.Pool, n: Notification): Promise<TemplateRow | null> {
   const { rows } = await db.query<TemplateRow>(
     `select name, language, header_type, param_order, button_param
        from public.whatsapp_templates
       where tenant_id = $1
-        and (id = $2 or ($2::uuid is null and key = $3::public.whatsapp_notification_kind and active))
+        and key = $3::public.whatsapp_notification_kind
+        and active
       order by (id = $2) desc nulls last
       limit 1`,
     [n.tenant_id, n.template_id, n.kind],
@@ -171,28 +181,32 @@ export async function sendNotification(args: {
     return "systemic";
   }
 
+  // Montar a mensagem não fala com a Meta: um erro aqui (fuso inválido no
+  // evento, parâmetro desconhecido no modelo) é da mensagem, definitivo — sem
+  // isto a notificação ficaria em "processando", voltaria à fila na
+  // reconciliação e giraria para sempre.
   const token = ctx?.ticket_code ? `${ctx.ticket_code}.${ctx.ticket_signature}` : "";
-  const values = templateValues({
-    name: ctx?.first_name ?? (n.params.name as string | undefined) ?? null,
-    eventName: ctx?.event_name ?? null,
-    startsAt: ctx?.starts_at ? new Date(ctx.starts_at).toISOString() : null,
-    timezone: ctx?.timezone ?? null,
-    venue: ctx?.venue_name ?? null,
-    city: ctx?.city ?? null,
-    number: ctx?.number ?? null,
-    token,
-    code: (n.params.code as string | undefined) ?? null,
-  });
-
   let message;
   try {
+    const values = templateValues({
+      name: ctx?.first_name ?? (n.params.name as string | undefined) ?? null,
+      eventName: ctx?.event_name ?? null,
+      startsAt: ctx?.starts_at ? new Date(ctx.starts_at).toISOString() : null,
+      timezone: ctx?.timezone ?? null,
+      venue: ctx?.venue_name ?? null,
+      city: ctx?.city ?? null,
+      number: ctx?.number ?? null,
+      token,
+      code: (n.params.code as string | undefined) ?? null,
+    });
     message = buildTemplateMessage(template, values, {
       headerImageUrl: token
         ? `${args.appUrl.replace(/\/+$/, "")}/api/ingresso/${encodeURIComponent(token)}/qr.png`
         : undefined,
     });
   } catch (error) {
-    await record(db, n.id, "falhou", { error: (error as Error).message });
+    await record(db, n.id, "falhou", { error: sanitize((error as Error).message) });
+    log("error", "mensagem não pôde ser montada", { id: n.id, error: sanitize((error as Error).message) });
     return "message_error";
   }
 

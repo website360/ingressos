@@ -199,6 +199,14 @@ describe("funções do worker", () => {
       expect(await claim(10)).toHaveLength(0);
     });
 
+    it("aceita tardia numa incerta (reconciliação chegou antes): vira aceita", async () => {
+      await seedPending(1);
+      const row = await claimOne();
+      await db.query(`update public.whatsapp_notifications set status = 'incerta' where id = $1`, [row.id]);
+      await record(row.id, "aceita", { wamid: "wamid.TARDIA" });
+      expect(await status(row.id)).toMatchObject({ status: "aceita", meta_message_id: "wamid.TARDIA" });
+    });
+
     it("não rebaixa o que o webhook já avançou, mas guarda o wamid", async () => {
       await seedPending(1);
       const row = await claimOne();

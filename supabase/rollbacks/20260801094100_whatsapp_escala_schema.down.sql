@@ -6,6 +6,8 @@
 -- pelo caminho novo; o histórico antigo (`whatsapp_messages`) fica intacto.
 -- =============================================================================
 
+drop trigger if exists tg_whatsapp_connection_templates on public.whatsapp_connections;
+drop function if exists private.sync_whatsapp_templates();
 drop trigger if exists tg_tenant_whatsapp_templates on public.tenants;
 drop function if exists private.seed_whatsapp_templates();
 drop function if exists private.ensure_whatsapp_templates(uuid);

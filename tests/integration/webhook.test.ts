@@ -173,14 +173,46 @@ describe("webhook da Meta", () => {
     expect(await row(id)).toMatchObject({ status: "entregue", meta_message_id: "wamid.SALVA" });
   });
 
-  it("falha 131050 (o usuário parou de receber): opt-out e pendentes do número bloqueadas", async () => {
-    const id = await newNotification({ wamid: "wamid.BLOQ" });
+  it("falha 131026 (número sem WhatsApp): opt-out como inválido e pendentes bloqueadas", async () => {
+    const id = await newNotification({ wamid: "wamid.INV" });
     const pending = await newNotification({ status: "pendente" });
-    await post(statusPayload([{ id: "wamid.BLOQ", status: "failed", code: 131050 }]));
-    expect(await row(id)).toMatchObject({ status: "falhou", last_error_code: 131050 });
+    await post(statusPayload([{ id: "wamid.INV", status: "failed", code: 131026 }]));
+    expect(await row(id)).toMatchObject({ status: "falhou", last_error_code: 131026 });
     expect(await row(pending)).toMatchObject({ status: "bloqueada", block_reason: "optout" });
     const { rows } = await db.query(`select reason from public.whatsapp_optouts`);
-    expect(rows).toEqual([{ reason: "bloqueio" }]);
+    expect(rows).toEqual([{ reason: "invalido" }]);
+  });
+
+  it("falha 131050 (parou de receber MARKETING): falha, sem bloquear confirmações futuras", async () => {
+    const id = await newNotification({ wamid: "wamid.MKT" });
+    const pending = await newNotification({ status: "pendente" });
+    await post(statusPayload([{ id: "wamid.MKT", status: "failed", code: 131050 }]));
+    expect(await row(id)).toMatchObject({ status: "falhou", last_error_code: 131050 });
+    expect((await row(pending)).status).toBe("pendente");
+    const { rows } = await db.query(`select count(*)::int as n from public.whatsapp_optouts`);
+    expect(rows[0].n).toBe(0);
+  });
+
+  it("'CANCELAR' não é pedido de saída (pode ser sobre a inscrição)", async () => {
+    await post({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA",
+          changes: [
+            {
+              field: "messages",
+              value: {
+                metadata: { phone_number_id: PHONE_ID },
+                messages: [{ from: "5511912345678", id: "wamid.IN2", type: "text", text: { body: "Cancelar" } }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const { rows } = await db.query(`select count(*)::int as n from public.whatsapp_optouts`);
+    expect(rows[0].n).toBe(0);
   });
 
   it("mensagem recebida 'PARAR' vira opt-out por pedido", async () => {

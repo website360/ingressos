@@ -759,7 +759,7 @@ declare
   v_count  int;
 begin
   update public.whatsapp_notifications n
-     set status = 'pendente', attempts = 0, next_attempt_at = now(),
+     set status = 'pendente', attempts = 0, next_attempt_at = now(), queued_at = now(),
          failed_at = null, locked_at = null, locked_by = null, request_started_at = null
    where n.tenant_id = v_tenant
      and (n.status = 'falhou' or (p_include_uncertain and n.status = 'incerta'))

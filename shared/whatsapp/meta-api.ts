@@ -106,20 +106,22 @@ export class MetaGraphClient {
     try {
       body = (await response.json()) as typeof body;
     } catch {
-      // corpo vazio ou não-JSON: o status decide abaixo
+      // corpo vazio, cortado ou não-JSON: decidido abaixo
     }
 
     const wamid = body.messages?.[0]?.id;
     if (response.ok && wamid) return wamid;
 
+    // 2xx sem um wamid legível: a Meta PODE ter aceitado (o corpo se perdeu no
+    // caminho). Sem status, a falha é classificada como incerta — repetir
+    // poderia entregar duas vezes.
+    if (response.ok) {
+      throw new MetaSendError("Meta respondeu sucesso sem o id da mensagem.", "after_send");
+    }
+
     const code = body.error?.code;
     const detail =
       body.error?.error_data?.details ?? body.error?.message ?? `HTTP ${response.status}`;
-    throw new MetaSendError(
-      `Meta: ${detail}`.slice(0, 500),
-      "after_send",
-      response.ok ? 502 : response.status,
-      code,
-    );
+    throw new MetaSendError(`Meta: ${detail}`.slice(0, 500), "after_send", response.status, code);
   }
 }

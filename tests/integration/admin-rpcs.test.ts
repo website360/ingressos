@@ -131,6 +131,49 @@ describe("ações e números do painel", () => {
     expect(await countBy("incerta", eventA)).toBe(1);
   });
 
+  it("reenviar recomeça a contagem de espera (queued_at)", async () => {
+    await seed(eventA, "falhou", 1, "queued_at=now() - interval '2 hours'");
+    await asUser(db, { tenantId, perms: MANAGE }, async (c) => {
+      await c.query(`select public.whatsapp_retry($1, null, null, false)`, [eventA]);
+      await c.query("commit");
+    });
+    const { rows } = await db.query(
+      `select queued_at > now() - interval '1 minute' as fresh from public.whatsapp_notifications where status = 'pendente'`,
+    );
+    expect(rows[0].fresh).toBe(true);
+  });
+
+  it("nome e idioma salvos na tela chegam aos modelos usados no envio", async () => {
+    await db.query(
+      `update public.whatsapp_connections
+          set meta_templates = '{"confirmed":"confirmacao_evento","cancelled":"cancelamento_evento","code":"codigo_acesso","language":"en_US"}'
+        where tenant_id = $1`,
+      [tenantId],
+    );
+    const { rows } = await db.query(
+      `select key::text, name, language from public.whatsapp_templates
+        where tenant_id = $1 and version = 1 order by key`,
+      [tenantId],
+    );
+    expect(rows).toEqual([
+      { key: "registration_cancelled", name: "cancelamento_evento", language: "en_US" },
+      { key: "registration_confirmed", name: "confirmacao_evento", language: "en_US" },
+      { key: "ticket_code", name: "codigo_acesso", language: "en_US" },
+    ]);
+    const v2 = await db.query(
+      `select language from public.whatsapp_templates where tenant_id = $1 and version = 2`,
+      [tenantId],
+    );
+    expect(v2.rows[0].language).toBe("en_US");
+    // Volta aos nomes padrão (objeto vazio mantém os atuais).
+    await db.query(
+      `update public.whatsapp_connections
+          set meta_templates = '{"confirmed":"ingresso_confirmado","cancelled":"inscricao_cancelada","code":"codigo_segunda_via","language":"pt_BR"}'
+        where tenant_id = $1`,
+      [tenantId],
+    );
+  });
+
   it("reenviar incertas só quando pedido", async () => {
     await seed(eventA, "incerta", 2);
     const requeued = await asUser(db, { tenantId, perms: MANAGE }, async (c) => {

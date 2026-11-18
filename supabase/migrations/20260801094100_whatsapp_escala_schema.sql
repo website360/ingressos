@@ -398,4 +398,51 @@ create trigger tg_tenant_whatsapp_templates
   after insert on public.tenants
   for each row execute function private.seed_whatsapp_templates();
 
+-- -----------------------------------------------------------------------------
+-- A tela de Configurações continua gravando nomes e idioma em
+-- `whatsapp_connections.meta_templates`. Sem isto, o que a empresa digitou
+-- (o nome aprovado na Meta) nunca chegaria aos modelos que o worker usa — e o
+-- envio cairia em "modelo inexistente", pausando a fila.
+--
+-- Nome: só a versão 1 (é a que espelha a tela). Idioma: todas as versões.
+-- -----------------------------------------------------------------------------
+create or replace function private.sync_whatsapp_templates()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_cfg      jsonb := coalesce(new.meta_templates, '{}'::jsonb);
+  v_language text;
+begin
+  perform private.ensure_whatsapp_templates(new.tenant_id);
+
+  if coalesce(v_cfg ->> 'confirmed', '') ~ '^[a-z0-9_]+$' then
+    update public.whatsapp_templates set name = v_cfg ->> 'confirmed'
+     where tenant_id = new.tenant_id and key = 'registration_confirmed' and version = 1;
+  end if;
+  if coalesce(v_cfg ->> 'cancelled', '') ~ '^[a-z0-9_]+$' then
+    update public.whatsapp_templates set name = v_cfg ->> 'cancelled'
+     where tenant_id = new.tenant_id and key = 'registration_cancelled' and version = 1;
+  end if;
+  if coalesce(v_cfg ->> 'code', '') ~ '^[a-z0-9_]+$' then
+    update public.whatsapp_templates set name = v_cfg ->> 'code'
+     where tenant_id = new.tenant_id and key = 'ticket_code' and version = 1;
+  end if;
+
+  v_language := v_cfg ->> 'language';
+  if coalesce(v_language, '') ~ '^[a-z]{2}(_[A-Z]{2})?$' then
+    update public.whatsapp_templates set language = v_language
+     where tenant_id = new.tenant_id and language is distinct from v_language;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger tg_whatsapp_connection_templates
+  after insert or update of meta_templates on public.whatsapp_connections
+  for each row execute function private.sync_whatsapp_templates();
+
 select private.ensure_whatsapp_templates(id) from public.tenants;

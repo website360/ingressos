@@ -225,8 +225,13 @@ begin
 
   if v_row.status <> 'processando' then
     if p_outcome = 'aceita' and p_wamid is not null then
+      -- A reconciliação pode ter marcado "incerta" enquanto a resposta estava a
+      -- caminho: com o wamid em mãos, deixa de ser incerta (senão um "reenviar
+      -- incertas" mandaria de novo o que a Meta aceitou).
       update public.whatsapp_notifications
-         set meta_message_id = coalesce(meta_message_id, p_wamid),
+         set status          = case when status = 'incerta' then 'aceita' else status end,
+             last_error      = case when status = 'incerta' then null else last_error end,
+             meta_message_id = coalesce(meta_message_id, p_wamid),
              accepted_at     = coalesce(accepted_at, clock_timestamp()),
              attempts        = greatest(attempts, v_row.attempts + 1),
              locked_at = null, locked_by = null

@@ -75,10 +75,11 @@ A situação **só avança**. Eventos que chegam fora de ordem (é comum o "lida
 - **O que fica gravado.** O aceite e a recusa vão para `consents`, com `document_type = 'whatsapp'`, a versão do texto (`WHATSAPP_CONSENT_VERSION`), IP, user agent, data e o telefone (`subject`).
 - **Sem aceite, nada sai.** A notificação nasce `bloqueada / sem_consentimento`.
 - **Opt-out** (`whatsapp_optouts`). Um número entra na lista quando:
-  - a pessoa responde "SAIR", "PARAR", "STOP" ou "CANCELAR" (motivo `pedido`);
-  - a Meta acusa número inexistente, código 131026 (motivo `invalido`);
-  - a Meta acusa bloqueio pelo usuário, códigos 131049 e 131050 (motivo `bloqueio`);
+  - a pessoa responde "SAIR", "PARAR" ou "STOP" (motivo `pedido`). "Cancelar" ficou de fora de propósito: quem responde isso pode estar querendo cancelar a inscrição;
+  - a Meta acusa número sem WhatsApp, código 131026 (motivo `invalido`);
   - o administrador inclui o número (motivo `manual`).
+
+  Os códigos 131049 e 131050 tratam de mensagens de **marketing**. Eles marcam aquela mensagem como falha, mas não bloqueiam o número para as confirmações.
 - **Efeito do opt-out.** As mensagens pendentes do número viram `bloqueada`.
 - **Segunda via do ingresso.** O código não exige o aceite do ingresso (a pessoa pede o código na hora, para aquele número), mas respeita o opt-out.
 
@@ -155,13 +156,16 @@ Os valores ficam em Configurações → WhatsApp → **Capacidade do número**:
    - pela tela (Configurações → WhatsApp → API oficial);
    - ou pelas variáveis `META_ACCESS_TOKEN`, `META_APP_SECRET`, `META_PHONE_NUMBER_ID` e `META_VERIFY_TOKEN`, que têm precedência.
 7. Ajustar a **capacidade** com o nível e a vazão reais da conta.
-8. Quando a Meta aprovar a v2, a situação do modelo muda sozinha (`aprovado`, pelo webhook). Para torná-la a versão usada:
+8. Quando a Meta aprovar a v2, a situação do modelo muda sozinha (`aprovado`, pelo webhook). Para torná-la a versão usada, rode os dois comandos **nesta ordem** (só pode haver uma versão ativa de cada vez):
 
    ```sql
-   update whatsapp_templates set active = (version = 2) where key = 'registration_confirmed';
+   update whatsapp_templates set active = false where key = 'registration_confirmed';
+   update whatsapp_templates set active = true  where key = 'registration_confirmed' and version = 2;
    ```
 
-   Enquanto isso, vale a v1 (`ingresso_confirmado`).
+   - Enquanto isso, vale a v1 (`ingresso_confirmado`).
+   - O nome e o idioma digitados na tela de Configurações são copiados para a v1 automaticamente. O idioma vale para todas as versões.
+   - As mensagens que já estão na fila saem pela versão **ativa** no momento do envio. Trocar de versão também destrava uma fila pausada por "modelo pausado ou desativado": basta retomar no painel.
 
 ## 8. Operação
 
@@ -223,7 +227,7 @@ curl -H "x-job-secret: $REVALIDATE_SECRET" http://127.0.0.1:3000/api/health/what
 
 - [ ] Migrations aplicadas na ordem. `npm run db:types` sem diferenças inesperadas.
 - [ ] `REVALIDATE_SECRET` de produção trocado. Hoje o cron do servidor usa o valor de desenvolvimento (`dev-revalidate-secret`). Atualizar o crontab junto.
-- [ ] `DATABASE_SSL_CA` configurada no servidor.
+- [ ] `DATABASE_SSL_CA` configurada no servidor. Sem ela (e sem `DATABASE_SSL_INSECURE=1`), o worker não sobe e o PM2 o reinicia a cada 5 s, **mesmo com o deploy dizendo "concluído"**. Confira `pm2 ls` e `pm2 logs ingressos-whatsapp`.
 - [ ] Worker no ar (`pm2 ls` mostra `ingressos-whatsapp` online). Health check responde 200.
 - [ ] Teste de SIGINT no servidor Linux: `pm2 reload ingressos-whatsapp` com fila andando não deixa nada em `processando`.
 - [ ] Credenciais Meta salvas e verificadas (o cartão de situação na tela).
@@ -285,6 +289,8 @@ Ferramenta e método: `scripts/load/README.md`. Dados completos: `scripts/load/r
 - **Recursos.** O worker usou até 175 MB de memória e 34% de um núcleo. No Postgres foram até 31 conexões no total: o worker usa no máximo 4, e o resto é o gerador de carga.
 
 ### O que NÃO está provado
+
+- **A vazão real do worker contra o Supabase hospedado.** Cada mensagem custa de 6 a 7 consultas ao banco, e o worker usa no máximo 4 conexões. Com o banco local, de latência quase zero, a média ficou em 70 msg/s. Contra o pooler do Supabase (alguns ms por consulta), o teto real do worker deve ser **menor que a vazão da Meta**. Medir em homologação antes de prometer números. Se precisar de mais, aumente o pool ou rode 2 instâncias: o limite continua global.
 
 - **Desempenho em produção.** O servidor de produção tem 1 vCPU e 2 GB, e o Supabase hospedado tem limite de 60 conexões e latência de rede. Os números acima são de uma máquina local muito mais forte. Antes de um evento grande, vale repetir em homologação.
 - **O `FOR UPDATE` no evento.** Ele serializa as inscrições de um mesmo evento e é o primeiro teto de inscrições por segundo. Localmente aguentou 111/s com folga. No Supabase hospedado, cada transação paga a latência de rede.

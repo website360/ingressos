@@ -149,10 +149,11 @@ begin
                   end
    where n.id = v_row.id;
 
-  if v_next = 'falhou' and v_code in (131026) then
+  -- Só "número sem WhatsApp" bloqueia. 131049/131050 falam de MARKETING
+  -- (limite por pessoa / parou de receber marketing) e não dizem nada sobre
+  -- confirmações de utilidade.
+  if v_next = 'falhou' and v_code = 131026 then
     perform private.whatsapp_block_number(p_tenant, v_row.phone_e164, 'invalido', 'meta');
-  elsif v_next = 'falhou' and v_code in (131049, 131050) then
-    perform private.whatsapp_block_number(p_tenant, v_row.phone_e164, 'bloqueio', 'meta');
   end if;
 end;
 $$;
@@ -176,7 +177,9 @@ begin
     '');
   v_text := btrim(regexp_replace(lower(v_text), '[^a-z ]', '', 'g'));
 
-  if v_text in ('sair', 'parar', 'stop', 'cancelar', 'cancelar mensagens') then
+  -- "Cancelar" fica de fora de propósito: quem responde isso pode estar
+  -- querendo cancelar a INSCRIÇÃO, e sairia da lista sem perceber.
+  if v_text in ('sair', 'parar', 'stop') then
     perform private.whatsapp_block_number(
       p_tenant, private.to_e164_br(p_message ->> 'from'), 'pedido', 'whatsapp');
   end if;
