@@ -122,9 +122,8 @@ function WizardBody({
   const [eventId, setEventId] = React.useState<string | null>(null);
   const [current, setCurrent] = React.useState(0);
   const [status, setStatus] = React.useState<StepStatus[]>(() => WIZARD_STEPS.map(() => "pending"));
-  const [images, setImages] = React.useState<{ banner: string | null; cover: string | null }>({
+  const [images, setImages] = React.useState<{ banner: string | null }>({
     banner: null,
-    cover: null,
   });
 
   // As perguntas padrão já foram copiadas para o evento na criação, então o
@@ -428,18 +427,10 @@ function WizardBody({
               <ImageUpload
                 eventId={eventId}
                 kind="banner"
-                label="Banner"
-                hint="Topo da página do evento e compartilhamento em redes. Ideal: 1600×600."
+                label="Foto do evento"
+                hint="Aparece no topo da página do evento, na prévia do link quando ele é compartilhado e no ingresso. Ideal: 1600×600 (horizontal)."
                 currentUrl={images.banner}
                 onChange={(url) => setImages((i) => ({ ...i, banner: url }))}
-              />
-              <ImageUpload
-                eventId={eventId}
-                kind="cover"
-                label="Capa"
-                hint="Imagem do evento em cards e listagens. Ideal: 800×450."
-                currentUrl={images.cover}
-                onChange={(url) => setImages((i) => ({ ...i, cover: url }))}
               />
             </div>
           )}

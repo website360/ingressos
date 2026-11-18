@@ -58,7 +58,7 @@ export function EventContentForm({ event, content }: Props) {
       {/* ------------------------------------------------------------------ */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Imagens</CardTitle>
+          <CardTitle className="text-base">Foto do evento</CardTitle>
           <CardDescription>
             O envio é imediato — não depende do botão de salvar no fim da página.
           </CardDescription>
@@ -67,16 +67,9 @@ export function EventContentForm({ event, content }: Props) {
           <ImageUpload
             eventId={event.id}
             kind="banner"
-            label="Banner"
-            hint="Topo da página do evento e compartilhamento em redes. Ideal: 1600×600."
+            label="Foto do evento"
+            hint="Aparece no topo da página do evento, na prévia do link quando ele é compartilhado e no ingresso. Ideal: 1600×600 (horizontal)."
             currentUrl={event.banner_url}
-          />
-          <ImageUpload
-            eventId={event.id}
-            kind="cover"
-            label="Capa"
-            hint="Card do evento na página inicial. Ideal: 800×450."
-            currentUrl={event.cover_url}
           />
         </CardContent>
       </Card>

@@ -48,7 +48,8 @@ export function EventsTable({ events, canDelete }: { events: EventStats[]; canDe
         accessorKey: "name",
         header: "Evento",
         cell: ({ row }) => {
-          const image = row.original.cover_url ?? row.original.banner_url;
+          // Uma foto só por evento: a do banner. A capa antiga fica de reserva.
+          const image = row.original.banner_url ?? row.original.cover_url;
 
           return (
             <div className="flex min-w-56 items-center gap-3">
@@ -59,7 +60,7 @@ export function EventsTable({ events, canDelete }: { events: EventStats[]; canDe
                   registrations={row.original.seats_taken ?? 0}
                 />
               )}
-              {/* Miniatura da capa: o organizador confere o resultado do upload
+              {/* Miniatura da foto: o organizador confere o resultado do upload
                   na própria listagem, sem abrir o evento. */}
               <div className="relative size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
                 {image ? (

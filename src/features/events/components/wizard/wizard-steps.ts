@@ -56,7 +56,7 @@ export const WIZARD_STEPS: WizardStep[] = [
       "allowed_radius_m",
     ],
   },
-  { id: "fotos", title: "Fotos", kind: "images" },
+  { id: "fotos", title: "Foto", kind: "images" },
   {
     id: "programacao",
     title: "Programação",
