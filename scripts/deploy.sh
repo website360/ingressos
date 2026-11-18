@@ -24,6 +24,9 @@ npm ci
 echo "▸ Build (standalone)..."
 npm run build
 
+echo "▸ Build do worker do WhatsApp..."
+npm run worker:build
+
 # O standalone não copia `public` nem `.next/static` — sem isto, o site sobe sem CSS.
 echo "▸ Copiando estáticos para o bundle standalone..."
 rm -rf .next/standalone/public
@@ -38,11 +41,9 @@ rm -rf .next/standalone/.next/cache
 ln -s "$CACHE_DIR" .next/standalone/.next/cache
 
 echo "▸ Recarregando PM2 (zero downtime)..."
-if pm2 describe ingressos > /dev/null 2>&1; then
-  pm2 reload ecosystem.config.js --update-env
-else
-  pm2 start ecosystem.config.js
-fi
+# startOrReload: recarrega o que já roda e sobe o que ainda não existe — na
+# primeira vez, o worker do WhatsApp (ingressos-whatsapp).
+pm2 startOrReload ecosystem.config.js --update-env
 pm2 save
 
 echo "▸ Smoke test..."

@@ -49,7 +49,9 @@ describe("ações e números do painel", () => {
     await db.query(`delete from public.whatsapp_notifications`);
     await db.query(
       `update public.whatsapp_connections set paused = false, paused_reason = null,
-              breaker_open_until = null, breaker_manual = false where tenant_id = $1`,
+              breaker_open_until = null, breaker_manual = false,
+              rate_per_second = 20, daily_unique_limit = 1000, worker_concurrency = 16
+        where tenant_id = $1`,
       [tenantId],
     );
   });

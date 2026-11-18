@@ -78,5 +78,36 @@ module.exports = {
       listen_timeout: 10000,
       wait_ready: false,
     },
+    {
+      /*
+        Worker do WhatsApp (API oficial da Meta) — docs/09-whatsapp-escala.md.
+        Processo separado do site: a inscrição nunca espera por ele.
+
+        UMA instância, em fork: o servidor tem 1 vCPU e a concorrência que
+        importa é de requisições em voo, configurável na tela. O limite de
+        vazão é global (no banco), então subir mais instâncias não estoura a
+        Meta — só divide o trabalho.
+
+        kill_timeout de 25 s: ao receber SIGINT o worker para de pegar
+        mensagens e espera as que estão em voo (até 20 s) antes de sair.
+      */
+      name: "ingressos-whatsapp",
+      script: "dist/worker.js",
+      exec_mode: "fork",
+      instances: 1,
+      env: {
+        ...lerDotenv(".env.local"),
+        NODE_ENV: "production",
+        TZ: "America/Sao_Paulo",
+      },
+      max_memory_restart: "256M",
+      error_file: "logs/whatsapp-error.log",
+      out_file: "logs/whatsapp-out.log",
+      time: false,
+      merge_logs: true,
+      kill_timeout: 25000,
+      autorestart: true,
+      restart_delay: 5000,
+    },
   ],
 };
